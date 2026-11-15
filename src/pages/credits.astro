@@ -1,0 +1,63 @@
+---
+/**
+ * Credits for third-party work used on the site. Rule: only assets whose licence allows use here
+ * (CC0, or CC-BY with credit), and every one is listed below, credited or not.
+ */
+import PageLayout from '../layouts/PageLayout.astro';
+
+const SOFTWARE = [
+	{ name: 'Astro', href: 'https://astro.build', license: 'MIT' },
+	{ name: 'React', href: 'https://react.dev', license: 'MIT' },
+	{ name: 'three.js', href: 'https://threejs.org', license: 'MIT' },
+	{ name: 'React Three Fiber', href: 'https://github.com/pmndrs/react-three-fiber', license: 'MIT' },
+	{ name: 'drei', href: 'https://github.com/pmndrs/drei', license: 'MIT' },
+	{ name: 'camera-controls', href: 'https://github.com/yomotsu/camera-controls', license: 'MIT' },
+];
+---
+
+<PageLayout title="Credits" description="Credits and licences for the models, textures, data and software behind this site.">
+	<h1>Credits</h1>
+
+	<section>
+		<h2>3D models and textures</h2>
+		<p>
+			None from outside yet: the desk, its wood grain and the lamp are all generated in code.
+		</p>
+	</section>
+
+	<section>
+		<h2>Open-source software</h2>
+		<ul>
+			{
+				SOFTWARE.map(({ name, href, license }) => (
+					<li>
+						<a href={href}>{name}</a> <span class="license">({license} licence)</span>
+					</li>
+				))
+			}
+		</ul>
+	</section>
+</PageLayout>
+
+<style>
+	section {
+		max-width: var(--prose-width);
+		margin-top: var(--space-8);
+	}
+
+	h2 {
+		font-size: var(--text-xl);
+	}
+
+	section > * + * {
+		margin-top: var(--space-3);
+	}
+
+	ul {
+		padding-left: var(--space-6);
+	}
+
+	.license {
+		color: var(--color-text-muted);
+	}
+</style>

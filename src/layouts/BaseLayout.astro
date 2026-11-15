@@ -1,0 +1,43 @@
+---
+/**
+ * The document shell every page shares: <head> (title, description, canonical, icons) and an
+ * empty <body>. The 3D desk page fills the body itself; 2D pages use PageLayout on top of this.
+ */
+import '../styles/global.css';
+import { SITE_DESCRIPTION, SITE_NAME } from '../lib/site';
+
+interface Props {
+	/** Page-specific title; rendered as "<title> · Travel — Aaron Yalong". Omit on the home page. */
+	title?: string;
+	description?: string;
+	/** Classes for <body>, e.g. the desk page's full-screen, always-dark mode. */
+	bodyClass?: string;
+}
+
+const { title, description = SITE_DESCRIPTION, bodyClass } = Astro.props;
+const fullTitle = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content={description} />
+		<meta name="generator" content={Astro.generator} />
+		<link rel="icon" href="/favicon.ico" sizes="32x32" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<title>{fullTitle}</title>
+		<link rel="canonical" href={canonical} />
+		<meta property="og:site_name" content={SITE_NAME} />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={fullTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+	</head>
+	<body class={bodyClass}>
+		<slot />
+	</body>
+</html>

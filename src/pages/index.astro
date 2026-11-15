@@ -1,0 +1,44 @@
+---
+/**
+ * Home: the 3D scrapbook desk.
+ *
+ * The page's HTML (title bar, "Skip the 3D" link, loading screen) arrives and paints before any
+ * JavaScript runs. The desk is a React island with client:only="react": three.js needs a browser
+ * (window, WebGL), so Astro doesn't try to render it on the server; until the island boots it
+ * shows the `fallback` slot, which is the same loading screen the island then takes over.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DeskApp from '../components/desk/DeskApp';
+import { PORTFOLIO_URL } from '../lib/site';
+import '../styles/desk.css';
+---
+
+<BaseLayout bodyClass="desk-page on-dark">
+	<header class="desk-topbar">
+		<div class="desk-brand">
+			<h1>Travel</h1>
+			<a href={PORTFOLIO_URL}>by Aaron Yalong</a>
+		</div>
+		<a class="desk-pill" href="/trips">Skip the 3D <span aria-hidden="true">→</span></a>
+	</header>
+
+	<main class="desk-stage">
+		<DeskApp client:only="react">
+			<div slot="fallback" class="loader" role="status">
+				<p class="loader-title">Unpacking the scrapbook…</p>
+				<div class="loader-bar" data-indeterminate><span></span></div>
+			</div>
+		</DeskApp>
+		<noscript>
+			<style>
+				.loader {
+					display: none;
+				}
+			</style>
+			<div class="desk-notice">
+				<p>The 3D desk needs JavaScript.</p>
+				<a class="desk-pill" href="/trips">See every trip as a list</a>
+			</div>
+		</noscript>
+	</main>
+</BaseLayout>
