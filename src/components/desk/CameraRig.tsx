@@ -1,6 +1,7 @@
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
-import { useEffect, type RefObject } from 'react';
-import { DESK_TARGET, ORBIT_LIMITS, type Framing } from './camera';
+import { useEffect, useRef, type RefObject } from 'react';
+import type { Vector3Tuple } from 'three';
+import { DESK_TARGET, FOCUS_POLAR, ORBIT_LIMITS, type Framing } from './camera';
 
 const { ACTION } = CameraControlsImpl;
 
@@ -9,6 +10,8 @@ interface CameraRigProps {
 	controlsRef: RefObject<CameraControlsImpl | null>;
 	framing: Framing;
 	reducedMotion: boolean;
+	/** Where an opened polaroid is held up, or null when nothing is open. */
+	focus: Vector3Tuple | null;
 }
 
 /**
@@ -20,7 +23,8 @@ interface CameraRigProps {
  * and remember a "home" view to return to (`saveState()` / `reset(true)`). Phase 2's fly-to-item
  * and this phase's reset button both come from that.
  */
-export function CameraRig({ controlsRef, framing, reducedMotion }: CameraRigProps) {
+export function CameraRig({ controlsRef, framing, reducedMotion, focus }: CameraRigProps) {
+	const hadFocus = useRef(false);
 	useEffect(() => {
 		const controls = controlsRef.current;
 		if (!controls) return;
@@ -39,6 +43,26 @@ export function CameraRig({ controlsRef, framing, reducedMotion }: CameraRigProp
 		controls.setLookAt(...framing.position, ...DESK_TARGET, false);
 		controls.saveState();
 	}, [controlsRef, framing]);
+
+	// Fly to an opened polaroid, and back to the saved home view when it closes.
+	useEffect(() => {
+		const controls = controlsRef.current;
+		if (!controls) return;
+		if (focus) {
+			// The zoom limit would stop the camera short of a close-up; lift it while focused, and
+			// pause drag/zoom input so the visitor can't wander off mid-card. (Animations still run.)
+			controls.minDistance = 0;
+			controls.enabled = false;
+			const [x, y, z] = focus;
+			const d = framing.focusDistance;
+			controls.setLookAt(x, y + Math.cos(FOCUS_POLAR) * d, z + Math.sin(FOCUS_POLAR) * d, x, y, z, true);
+		} else if (hadFocus.current) {
+			controls.enabled = true;
+			controls.reset(true);
+			controls.minDistance = framing.minDistance;
+		}
+		hadFocus.current = focus !== null;
+	}, [controlsRef, framing, focus]);
 
 	return (
 		<CameraControls

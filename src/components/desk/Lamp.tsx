@@ -47,11 +47,12 @@ export function Lamp({ shadowMapSize }: LampProps) {
 				color={PALETTE.lamp}
 				// Physically based: intensity is in candela, and light falls off with distance squared
 				// (decay 2), like a real bulb. The pool is brightest under the lamp and dims outward.
-				intensity={1.8}
+				intensity={2.1}
 				decay={2}
 				// Cone half-angle, and how much of it is a soft edge (0 = hard rim, 1 = all fade).
-				angle={0.8}
-				penumbra={0.9}
+				// Wide enough that the pool reaches the polaroids around the map.
+				angle={1}
+				penumbra={0.85}
 				castShadow
 				shadow-mapSize={[shadowMapSize, shadowMapSize]}
 				// Blur radius for the shadow edges (PCF filtering), in shadow-map texels.

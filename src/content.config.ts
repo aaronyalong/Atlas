@@ -1,0 +1,42 @@
+import { defineCollection } from 'astro:content';
+import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
+
+/**
+ * Trips: one Markdown file per trip in src/content/trips/. The file name is the trip's URL slug
+ * (tokyo.md → /trips/tokyo/). The Markdown body is the trip's journal text (phase 4).
+ *
+ * Only title, place and coordinates are required. Anything left out shows as a visible TODO on
+ * the site rather than being made up.
+ */
+const trips = defineCollection({
+	loader: glob({ pattern: '**/*.md', base: './src/content/trips' }),
+	schema: ({ image }) =>
+		z.object({
+			/** The main name, e.g. "Tokyo" or "Zion National Park". */
+			title: z.string(),
+			/** Where it is, e.g. "Japan" or "Utah". */
+			place: z.string(),
+			/** For the map pin (phase 3): decimal degrees, north and east positive. */
+			lat: z.number().min(-90).max(90),
+			lng: z.number().min(-180).max(180),
+			/** YYYY-MM-DD. `end` can be left out for a one-day trip. */
+			start: z.coerce.date().optional(),
+			end: z.coerce.date().optional(),
+			/** One or two sentences: the card on the desk and the trip list. */
+			blurb: z.string().optional(),
+			/**
+			 * Cover photo, relative to the trip file (e.g. ./tokyo/cover.jpg). Re-encoded at build
+			 * time, which strips EXIF and GPS data; the original file is never published.
+			 */
+			cover: image().optional(),
+			/** Describes the cover photo for screen readers. Required once there's a cover. */
+			coverAlt: z.string().optional(),
+			/** Handwritten on the polaroid. Defaults to the title. */
+			caption: z.string().max(28).optional(),
+			/** Gets a polaroid on the desk. Every trip gets a map pin regardless. */
+			featured: z.boolean().default(false),
+		}),
+});
+
+export const collections = { trips };

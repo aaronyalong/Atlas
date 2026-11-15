@@ -7,10 +7,42 @@
  * (window, WebGL), so Astro doesn't try to render it on the server; until the island boots it
  * shows the `fallback` slot, which is the same loading screen the island then takes over.
  */
+import { getImage } from 'astro:assets';
+import '@fontsource/caveat/600.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import DeskApp from '../components/desk/DeskApp';
+import type { DeskTrip } from '../components/desk/types';
 import { PORTFOLIO_URL } from '../lib/site';
+import { formatTripDates, getTrips, tripHref } from '../lib/trips';
 import '../styles/desk.css';
+
+/*
+ * Build time: turn the featured trips into the plain data the 3D island needs. Cover photos go
+ * through Astro's image pipeline (sharp): resized, re-encoded to WebP, and stripped of EXIF/GPS
+ * metadata. The island only ever sees the processed file's URL.
+ */
+const featured = (await getTrips()).filter((trip) => trip.data.featured);
+const deskTrips: DeskTrip[] = await Promise.all(
+	featured.map(async (trip) => {
+		const { title, place, caption, blurb, cover, coverAlt } = trip.data;
+		const photo = cover
+			? {
+					src: (await getImage({ src: cover, width: 800, format: 'webp', quality: 80 })).src,
+					alt: coverAlt ?? '',
+				}
+			: null;
+		return {
+			slug: trip.id,
+			title,
+			place,
+			caption: caption ?? title,
+			dates: formatTripDates(trip),
+			blurb: blurb ?? null,
+			href: tripHref(trip),
+			photo,
+		};
+	}),
+);
 ---
 
 <BaseLayout bodyClass="desk-page on-dark">
@@ -19,11 +51,11 @@ import '../styles/desk.css';
 			<h1>Travel</h1>
 			<a href={PORTFOLIO_URL}>by Aaron Yalong</a>
 		</div>
-		<a class="desk-pill" href="/trips">Skip the 3D <span aria-hidden="true">→</span></a>
+		<a class="desk-pill" href="/trips/">Skip the 3D <span aria-hidden="true">→</span></a>
 	</header>
 
 	<main class="desk-stage">
-		<DeskApp client:only="react">
+		<DeskApp client:only="react" trips={deskTrips}>
 			<div slot="fallback" class="loader" role="status">
 				<p class="loader-title">Unpacking the scrapbook…</p>
 				<div class="loader-bar" data-indeterminate><span></span></div>
@@ -37,7 +69,7 @@ import '../styles/desk.css';
 			</style>
 			<div class="desk-notice">
 				<p>The 3D desk needs JavaScript.</p>
-				<a class="desk-pill" href="/trips">See every trip as a list</a>
+				<a class="desk-pill" href="/trips/">See every trip as a list</a>
 			</div>
 		</noscript>
 	</main>

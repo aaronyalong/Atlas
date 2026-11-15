@@ -1,10 +1,11 @@
 import { useProgress, type CameraControlsImpl } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Component, useCallback, useRef, useState, type ReactNode } from 'react';
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AgXToneMapping } from 'three';
 import { framingFor } from './camera';
 import { getDeviceProfile, hasWebGL } from './device';
 import { Scene } from './Scene';
+import type { DeskTrip } from './types';
 
 /**
  * The 3D desk island (mounted by src/pages/index.astro with client:only="react").
@@ -14,14 +15,29 @@ import { Scene } from './Scene';
  * the site's CSS. If there's no WebGL, or the scene crashes, the visitor gets a short note and
  * the link to the plain list of trips instead.
  */
-export default function DeskApp() {
+export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
 	// Read once from the browser at startup. (Safe: client:only never runs this on the server.)
 	const [profile] = useState(getDeviceProfile);
 	const [framing] = useState(() => framingFor(window.innerWidth / window.innerHeight));
 	const [webgl] = useState(hasWebGL);
 	const [ready, setReady] = useState(false);
+	// The opened polaroid's slug. Lives here, above the Canvas, so both the 3D scene and the
+	// HTML controls (Reset view, Escape) can read and change it.
+	const [selected, setSelected] = useState<string | null>(null);
 	const controlsRef = useRef<CameraControlsImpl | null>(null);
 	const onReady = useCallback(() => setReady(true), []);
+	const close = useCallback(() => setSelected(null), []);
+
+	// Escape closes an open card.
+	useEffect(() => {
+		if (!selected) return;
+		const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	}, [selected, close]);
+
+	// Reset view: closing a card already flies home (see CameraRig); otherwise go home directly.
+	const resetView = () => (selected ? close() : controlsRef.current?.reset(true));
 
 	if (!webgl) return <Fallback reason="Your browser can't show the 3D desk." />;
 
@@ -42,16 +58,27 @@ export default function DeskApp() {
 						gl.toneMapping = AgXToneMapping;
 						gl.toneMappingExposure = 1.15;
 					}}
+					// A click that hits nothing at all (the dark room) also closes the card.
+					onPointerMissed={close}
 				>
-					<Scene profile={profile} framing={framing} controlsRef={controlsRef} onReady={onReady} />
+					<Scene
+						profile={profile}
+						framing={framing}
+						controlsRef={controlsRef}
+						trips={trips}
+						selected={selected}
+						onSelect={setSelected}
+						onClose={close}
+						onReady={onReady}
+					/>
 				</Canvas>
 			</div>
 
 			<div className="desk-hud">
 				<p className="desk-hint">
-					{profile.isMobile ? 'Drag to look · pinch to zoom' : 'Drag to look around · scroll to zoom'}
+					{profile.isMobile ? 'Tap a photo · drag to look' : 'Click a photo · drag to look around · scroll to zoom'}
 				</p>
-				<button type="button" className="desk-pill" onClick={() => controlsRef.current?.reset(true)}>
+				<button type="button" className="desk-pill" onClick={resetView}>
 					<ResetIcon />
 					Reset view
 				</button>

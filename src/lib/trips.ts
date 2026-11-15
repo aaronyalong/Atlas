@@ -1,0 +1,38 @@
+import { getCollection, type CollectionEntry } from 'astro:content';
+
+export type Trip = CollectionEntry<'trips'>;
+
+/** Every trip, most recent first; trips without dates go last, alphabetically. */
+export async function getTrips(): Promise<Trip[]> {
+	const trips = await getCollection('trips');
+	return trips.sort((a, b) => {
+		const ta = a.data.start?.getTime();
+		const tb = b.data.start?.getTime();
+		if (ta !== undefined && tb !== undefined && ta !== tb) return tb - ta;
+		if (ta === undefined && tb !== undefined) return 1;
+		if (tb === undefined && ta !== undefined) return -1;
+		return a.data.title.localeCompare(b.data.title);
+	});
+}
+
+/** The trip's scrapbook page. */
+export const tripHref = (trip: Trip) => `/trips/${trip.id}/`;
+
+/** "Tokyo, Japan". */
+export const tripName = (trip: Trip) => `${trip.data.title}, ${trip.data.place}`;
+
+// Dates are calendar days (YAML dates parse as UTC midnight), so format them in UTC: otherwise
+// a visitor west of Greenwich would see the day before.
+const DAY = new Intl.DateTimeFormat('en-US', {
+	month: 'short',
+	day: 'numeric',
+	year: 'numeric',
+	timeZone: 'UTC',
+});
+
+/** "Mar 3 – 10, 2025", "Mar 3, 2025", or null when the trip has no dates yet. */
+export function formatTripDates(trip: Trip): string | null {
+	const { start, end } = trip.data;
+	if (!start) return null;
+	return end && end.getTime() !== start.getTime() ? DAY.formatRange(start, end) : DAY.format(start);
+}

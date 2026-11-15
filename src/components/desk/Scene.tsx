@@ -1,16 +1,25 @@
 import { Environment, Lightformer, type CameraControlsImpl } from '@react-three/drei';
-import { Suspense, useEffect, type RefObject } from 'react';
+import { Suspense, useEffect, useMemo, type RefObject } from 'react';
 import { CameraRig } from './CameraRig';
 import type { Framing } from './camera';
 import { Desk } from './Desk';
 import type { DeviceProfile } from './device';
 import { Lamp } from './Lamp';
+import { placePolaroids, presentedPosition } from './layout';
 import { PALETTE } from './palette';
+import { Polaroids } from './Polaroids';
+import type { DeskTrip } from './types';
 
 interface SceneProps {
 	profile: DeviceProfile;
 	framing: Framing;
 	controlsRef: RefObject<CameraControlsImpl | null>;
+	/** Featured trips, one polaroid each. */
+	trips: DeskTrip[];
+	/** Slug of the opened polaroid, or null. */
+	selected: string | null;
+	onSelect: (slug: string) => void;
+	onClose: () => void;
 	/** Called once everything inside the Suspense boundary has loaded and been drawn. */
 	onReady: () => void;
 }
@@ -30,7 +39,15 @@ interface SceneProps {
  * Fog in the background colour makes the far edges of the desk melt into the dark room. It starts
  * at the camera's distance from the desk's centre, so the middle of the desk is always clear.
  */
-export function Scene({ profile, framing, controlsRef, onReady }: SceneProps) {
+export function Scene({ profile, framing, controlsRef, trips, selected, onSelect, onClose, onReady }: SceneProps) {
+	const placed = useMemo(() => placePolaroids(trips, framing.portrait), [trips, framing.portrait]);
+	// Where the camera should look while a polaroid is open. Memoised so the camera only moves
+	// when the selection actually changes.
+	const focus = useMemo(() => {
+		const p = placed.find((item) => item.trip.slug === selected);
+		return p ? presentedPosition(p.rest) : null;
+	}, [placed, selected]);
+
 	return (
 		<>
 			<color attach="background" args={[PALETTE.sceneBg]} />
@@ -40,11 +57,19 @@ export function Scene({ profile, framing, controlsRef, onReady }: SceneProps) {
 			<directionalLight position={[1.2, 1.5, 1.8]} color={PALETTE.moonlight} intensity={0.3} />
 			<Lamp shadowMapSize={profile.shadowMapSize} />
 
-			{/* Suspense: anything below that loads asynchronously (models, image textures; none
-			    yet in phase 1) holds back this subtree until it's ready. <Ready> mounts last,
-			    so it only runs once everything else has. */}
+			{/* Suspense: anything below that loads asynchronously (the handwriting font, cover
+			    photos) holds back this subtree until it's ready. <Ready> mounts last, so it only
+			    runs once everything else has. */}
 			<Suspense fallback={null}>
-				<Desk textureSize={profile.textureSize} />
+				<Desk textureSize={profile.textureSize} onClick={onClose} />
+				<Polaroids
+					placed={placed}
+					selected={selected}
+					onSelect={onSelect}
+					onClose={onClose}
+					textureWidth={profile.polaroidTextureWidth}
+					reducedMotion={profile.reducedMotion}
+				/>
 				<Environment resolution={64} environmentIntensity={0.35}>
 					<Lightformer form="rect" color={PALETTE.lamp} intensity={3} position={[-1, 2, -0.6]} scale={[1.5, 1, 1]} />
 					<Lightformer form="rect" color={PALETTE.moonlight} intensity={0.8} position={[2, 1.5, -2]} scale={[2, 2, 1]} />
@@ -52,7 +77,7 @@ export function Scene({ profile, framing, controlsRef, onReady }: SceneProps) {
 				<Ready onReady={onReady} />
 			</Suspense>
 
-			<CameraRig controlsRef={controlsRef} framing={framing} reducedMotion={profile.reducedMotion} />
+			<CameraRig controlsRef={controlsRef} framing={framing} reducedMotion={profile.reducedMotion} focus={focus} />
 		</>
 	);
 }

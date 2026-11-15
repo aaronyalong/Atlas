@@ -14,6 +14,10 @@ export const PALETTE = {
 	/** Light bounced up off the floor and walls. */
 	bounce: '#2a1c12',
 
+	/** Cream card stock (polaroid backs) and handwriting ink. Shared with global.css. */
+	paper: '#f4ecdc',
+	ink: '#2a2622',
+
 	wood: { base: '#6a4b35', dark: '#3b2518', light: '#a57a55' },
 	lampPaint: '#2f3b36',
 	brass: '#b08a4a',

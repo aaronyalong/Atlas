@@ -28,6 +28,8 @@ export const ORBIT_LIMITS = {
 const START_POLAR = deg(50);
 
 export interface Framing {
+	/** A tall (portrait) screen: framed differently, and the polaroids use the tall layout. */
+	portrait: boolean;
 	/** Vertical field of view, in degrees. */
 	fov: number;
 	/** Starting distance from DESK_TARGET. */
@@ -39,7 +41,12 @@ export interface Framing {
 	/** How far in and out the visitor can zoom. */
 	minDistance: number;
 	maxDistance: number;
+	/** Camera distance from an opened polaroid: close enough to read its card comfortably. */
+	focusDistance: number;
 }
+
+/** An opened polaroid is viewed from the front, looking down at 45° (it tips up to match). */
+export const FOCUS_POLAR = deg(45);
 
 /**
  * The starting shot for a viewport's aspect ratio (width / height). A tall phone screen is
@@ -56,6 +63,7 @@ export function framingFor(aspect: number): Framing {
 	// the vertical axis from the front (+z).
 	const horizontal = Math.sin(START_POLAR) * distance;
 	return {
+		portrait,
 		fov,
 		distance,
 		azimuth,
@@ -66,5 +74,8 @@ export function framingFor(aspect: number): Framing {
 		],
 		minDistance: distance * 0.45,
 		maxDistance: distance * 1.35,
+		// Desktop: the card fills about half the screen's height. Phone: about two thirds of its
+		// width (a narrow screen runs out of width first).
+		focusDistance: portrait ? 0.36 : 0.34,
 	};
 }

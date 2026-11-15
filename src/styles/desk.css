@@ -203,3 +203,149 @@
 		transform: translateX(290%);
 	}
 }
+
+/* ---------- Polaroid hover label ---------- */
+.desk-label {
+	display: block;
+	padding: var(--space-1) var(--space-3);
+	background-color: color-mix(in srgb, var(--dark-bg) 80%, transparent);
+	backdrop-filter: blur(6px);
+	border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
+	border-radius: 999px;
+	color: var(--color-text);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.desk-label {
+		animation: label-in 0.25s var(--ease-out);
+	}
+}
+
+@keyframes label-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+/* ---------- Trip card (on the back of an opened polaroid) ----------
+ * Laid out at 440 × 535 px, the polaroid's proportions; drei's <Html transform> scales it onto
+ * the print in 3D. It's cream paper in both themes, so it sets its own colours.
+ */
+.trip-card {
+	--card-ink: var(--ink);
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: 440px;
+	height: 535px;
+	padding: 44px 40px 36px;
+	background:
+		radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.35), transparent 60%),
+		var(--paper);
+	/* Hovering in front of the desk: a soft shadow below and a thin edge, so it reads as card stock. */
+	box-shadow:
+		0 0 0 1px rgb(0 0 0 / 0.08),
+		0 30px 60px -20px rgb(0 0 0 / 0.65);
+	color: var(--card-ink);
+	font-family: var(--font-sans);
+	font-size: 19px;
+	line-height: 1.5;
+	color-scheme: light;
+	/* Local accent: the portfolio's light-mode blue reads well on cream. */
+	--color-accent: #2f5bd3;
+	--color-text-muted: #6b6259;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.trip-card {
+		animation: card-in 0.35s var(--ease-out);
+	}
+}
+
+@keyframes card-in {
+	from {
+		opacity: 0;
+	}
+}
+
+.trip-card-place {
+	color: var(--color-text-muted);
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.trip-card-title {
+	margin-top: 2px;
+	font-family: 'Caveat', cursive;
+	font-size: 64px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.trip-card-dates {
+	margin-top: 12px;
+	color: var(--color-text-muted);
+}
+
+.trip-card-blurb {
+	flex: 1;
+	margin-top: 18px;
+	overflow: hidden;
+}
+
+.trip-card .todo {
+	border-color: currentColor;
+	color: var(--color-text-muted);
+	font-size: 15px;
+}
+
+.trip-card-open {
+	align-self: flex-start;
+	padding: 10px 22px;
+	border: 1.5px solid var(--card-ink);
+	border-radius: 999px;
+	color: var(--card-ink);
+	font-weight: 650;
+	text-decoration: none;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
+}
+
+.trip-card-open:hover,
+.trip-card-open:focus-visible {
+	background-color: var(--card-ink);
+	color: var(--paper);
+}
+
+.trip-card-close {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	width: 44px;
+	height: 44px;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--color-text-muted);
+	font: inherit;
+	font-size: 30px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.trip-card-close:hover {
+	background-color: rgb(0 0 0 / 0.06);
+	color: var(--card-ink);
+}
+
+.trip-card :focus-visible {
+	outline: 3px solid var(--color-accent);
+	outline-offset: 3px;
+}

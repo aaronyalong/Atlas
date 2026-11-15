@@ -16,7 +16,14 @@ export const DESK = { width: 2.4, depth: 2.05, thickness: 0.05, centerZ: 0.075 }
  * freed when the component goes away: GPU memory isn't garbage-collected like JS objects, so
  * three.js resources you create yourself need an explicit dispose().
  */
-export function Desk({ textureSize }: { textureSize: number }) {
+export function Desk({
+	textureSize,
+	onClick,
+}: {
+	textureSize: number;
+	/** A click on the bare desk (not a drag). */
+	onClick?: () => void;
+}) {
 	const gl = useThree((state) => state.gl);
 
 	const map = useMemo(() => {
@@ -35,6 +42,9 @@ export function Desk({ textureSize }: { textureSize: number }) {
 			smoothness={3}
 			position={[0, -DESK.thickness / 2, DESK.centerZ]}
 			receiveShadow
+			onClick={(e) => {
+				if (e.delta <= 4) onClick?.();
+			}}
 		>
 			{/* Satin varnish: mostly matte, with a soft sheen where the lamp reflects. */}
 			<meshStandardMaterial map={map} roughness={0.62} metalness={0} />

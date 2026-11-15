@@ -17,7 +17,10 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 
 - `src/components/desk/`: the 3D scene. Start at `DeskApp.tsx` (the island) → `Scene.tsx`.
   Camera framing and orbit limits are in `camera.ts`; colours in `palette.ts`.
-- `src/pages/`: `index.astro` (the desk), `trips.astro` (plain list), `credits.astro`.
+- `src/content/trips/`: one Markdown file per trip (schema in `src/content.config.ts`). Put a
+  trip's photos in a folder next to it (e.g. `tokyo/cover.jpg`); they're re-encoded at build
+  time, which strips EXIF/GPS, and the originals are never published.
+- `src/pages/`: `index.astro` (the desk), `trips/` (plain list and per-trip pages), `credits.astro`.
 - `src/styles/global.css`: design tokens shared with the portfolio, plus the scene colours.
 
 ## Assets and credits
@@ -28,7 +31,7 @@ is listed on [`/credits`](src/pages/credits.astro), whether its licence requires
 ## Roadmap
 
 1. ~~Empty desk, lighting, camera~~
-2. Polaroids from trip data, hover and click
+2. ~~Polaroids from trip data, hover and click~~
 3. World map with lat/lng pins (Natural Earth projection, cropped, pins computed at build time)
 4. Trip pages (2D scrapbook)
 5. Props and polish (passport, tickets, journal, camera)

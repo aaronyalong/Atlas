@@ -12,6 +12,8 @@ export interface DeviceProfile {
 	shadowMapSize: number;
 	/** Width (px) of textures generated in code, like the desk's wood grain. */
 	textureSize: number;
+	/** Width (px) of each polaroid's front and back textures. */
+	polaroidTextureWidth: number;
 	/** The visitor asked their OS for less motion: camera moves snap instead of gliding. */
 	reducedMotion: boolean;
 }
@@ -24,6 +26,7 @@ export function getDeviceProfile(): DeviceProfile {
 		dpr: isMobile ? [1, 1.5] : [1, 2],
 		shadowMapSize: isMobile ? 1024 : 2048,
 		textureSize: isMobile ? 1024 : 2048,
+		polaroidTextureWidth: isMobile ? 448 : 640,
 		reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 	};
 }
