@@ -5,28 +5,38 @@ import { AgXToneMapping } from 'three';
 import { framingFor } from './camera';
 import { getDeviceProfile, hasWebGL } from './device';
 import { Scene } from './Scene';
-import type { DeskTrip } from './types';
+import { itemId, type DeskMap, type DeskTrip, type ItemRef } from './types';
 
 /**
  * The 3D desk island (mounted by src/pages/index.astro with client:only="react").
  *
  * Two layers: the WebGL <Canvas>, and plain HTML on top of it (loading screen, hint, reset
- * button). HTML is better than 3D for buttons and text: it's accessible, crisp, and styled with
+ * button, and a visually hidden list of every item on the desk for keyboard and screen-reader
+ * users). HTML is better than 3D for buttons and text: it's accessible, crisp, and styled with
  * the site's CSS. If there's no WebGL, or the scene crashes, the visitor gets a short note and
  * the link to the plain list of trips instead.
  */
-export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
+export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMap }) {
 	// Read once from the browser at startup. (Safe: client:only never runs this on the server.)
 	const [profile] = useState(getDeviceProfile);
 	const [framing] = useState(() => framingFor(window.innerWidth / window.innerHeight));
 	const [webgl] = useState(hasWebGL);
 	const [ready, setReady] = useState(false);
-	// The opened polaroid's slug. Lives here, above the Canvas, so both the 3D scene and the
-	// HTML controls (Reset view, Escape) can read and change it.
-	const [selected, setSelected] = useState<string | null>(null);
+	// The opened item and the keyboard-focused item. They live here, above the Canvas, so both
+	// the 3D scene and the HTML controls (Reset view, Escape, the item list) can read and change
+	// them.
+	const [selected, setSelected] = useState<ItemRef | null>(null);
+	const [focused, setFocused] = useState<string | null>(null);
 	const controlsRef = useRef<CameraControlsImpl | null>(null);
 	const onReady = useCallback(() => setReady(true), []);
-	const close = useCallback(() => setSelected(null), []);
+
+	const close = useCallback(() => {
+		setSelected((current) => {
+			// Hand keyboard focus back to the item's button, so Tab carries on from where it was.
+			if (current) document.getElementById(`item-${itemId(current.kind, current.slug)}`)?.focus({ preventScroll: true });
+			return null;
+		});
+	}, []);
 
 	// Escape closes an open card.
 	useEffect(() => {
@@ -41,6 +51,11 @@ export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
 
 	if (!webgl) return <Fallback reason="Your browser can't show the 3D desk." />;
 
+	const items: { ref: ItemRef; label: string }[] = [
+		...trips.filter((t) => t.featured).map((t) => ({ ref: { kind: 'polaroid' as const, slug: t.slug }, label: `${t.title}, ${t.place}: photo` })),
+		...trips.filter((t) => t.map).map((t) => ({ ref: { kind: 'pin' as const, slug: t.slug }, label: `${t.title}, ${t.place}: map pin` })),
+	];
+
 	return (
 		<SceneErrorBoundary>
 			<div className="desk-canvas">
@@ -54,6 +69,7 @@ export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
 					// Tone mapping squeezes the scene's unlimited light range into what a screen can
 					// show. R3F defaults to ACES, which pushes warm light toward saturated orange; AgX
 					// rolls bright warm light off toward cream, like a photo of a tungsten lamp.
+					// (With the effect composer on, its ToneMapping pass does this instead.)
 					onCreated={({ gl }) => {
 						gl.toneMapping = AgXToneMapping;
 						gl.toneMappingExposure = 1.15;
@@ -66,7 +82,9 @@ export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
 						framing={framing}
 						controlsRef={controlsRef}
 						trips={trips}
+						map={map}
 						selected={selected}
+						focused={focused}
 						onSelect={setSelected}
 						onClose={close}
 						onReady={onReady}
@@ -74,9 +92,31 @@ export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
 				</Canvas>
 			</div>
 
+			{/* Keyboard and screen-reader access to the desk: one button per item. Tab moves the
+			    focus (the item lifts and shows its label, the same as hovering), Enter opens it.
+			    Visually hidden: the 3D scene is the visible version of this list. */}
+			<ul className="visually-hidden" aria-label="Items on the desk">
+				{items.map(({ ref, label }) => {
+					const id = itemId(ref.kind, ref.slug);
+					return (
+						<li key={id}>
+							<button
+								type="button"
+								id={`item-${id}`}
+								onFocus={() => setFocused(id)}
+								onBlur={() => setFocused((f) => (f === id ? null : f))}
+								onClick={() => setSelected(ref)}
+							>
+								{label}
+							</button>
+						</li>
+					);
+				})}
+			</ul>
+
 			<div className="desk-hud">
 				<p className="desk-hint">
-					{profile.isMobile ? 'Tap a photo · drag to look' : 'Click a photo · drag to look around · scroll to zoom'}
+					{profile.isMobile ? 'Tap a photo or pin · drag to look' : 'Click a photo or pin · drag to look around · scroll to zoom'}
 				</p>
 				<button type="button" className="desk-pill" onClick={resetView}>
 					<ResetIcon />
@@ -91,8 +131,8 @@ export default function DeskApp({ trips }: { trips: DeskTrip[] }) {
 
 /**
  * The loading screen: same markup as the fallback in index.astro, so the hand-over from HTML to
- * React is seamless. useProgress reports drei/three's loading manager (models, image textures).
- * Phase 1 downloads nothing, so it shows the sweep until the first frame is drawn, then fades.
+ * React is seamless. useProgress reports drei/three's loading manager (textures, models). The
+ * bar sweeps until there's a byte count, then fills, then fades once the first frame is drawn.
  */
 function Loader({ done }: { done: boolean }) {
 	const { active, progress } = useProgress();
@@ -110,7 +150,7 @@ function Fallback({ reason }: { reason: string }) {
 	return (
 		<div className="desk-notice">
 			<p>{reason}</p>
-			<a className="desk-pill" href="/trips">
+			<a className="desk-pill" href="/trips/">
 				See every trip as a list
 			</a>
 		</div>

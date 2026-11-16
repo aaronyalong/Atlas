@@ -21,6 +21,10 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
   trip's photos in a folder next to it (e.g. `tokyo/cover.jpg`); they're re-encoded at build
   time, which strips EXIF/GPS, and the originals are never published.
 - `src/pages/`: `index.astro` (the desk), `trips/` (plain list and per-trip pages), `credits.astro`.
+- `src/lib/map/`: the map's crop (`config.ts`) and the projection shared by the texture script
+  and the pins (`projection.ts`). To re-centre the map (say, for Europe), edit the config and run
+  `npm run map`; the texture lands in `public/map/` and the pins follow at the next build. A trip
+  outside the crop gets no pin and a build warning.
 - `src/styles/global.css`: design tokens shared with the portfolio, plus the scene colours.
 
 ## Assets and credits
@@ -43,7 +47,7 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
 
 1. ~~Empty desk, lighting, camera~~
 2. ~~Polaroids from trip data, hover and click~~
-3. World map with lat/lng pins (Natural Earth projection, cropped, pins computed at build time)
+3. ~~World map with lat/lng pins (Natural Earth projection, cropped, pins computed at build time)~~
 4. Trip pages (2D scrapbook)
 5. Props and polish (passport, tickets, journal, camera)
 6. Deploy to travel.aaronyalong.com (Cloudflare Worker, same setup as the portfolio)

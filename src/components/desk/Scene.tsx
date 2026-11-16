@@ -1,5 +1,6 @@
 import { ContactShadows, Environment, type CameraControlsImpl } from '@react-three/drei';
 import { Suspense, useEffect, useMemo, type RefObject } from 'react';
+import type { Vector3Tuple } from 'three';
 import { CameraRig } from './CameraRig';
 import type { Framing } from './camera';
 import { Desk, DESK } from './Desk';
@@ -8,25 +9,30 @@ import { Effects } from './Effects';
 import { Lamp } from './Lamp';
 import { placePolaroids, presentedPosition } from './layout';
 import { PALETTE } from './palette';
+import { Pins, TAG_OFFSET } from './Pins';
 import { Polaroids } from './Polaroids';
-import type { DeskTrip } from './types';
+import type { DeskMap, DeskTrip, ItemRef } from './types';
+import { mapToDesk, WorldMap } from './WorldMap';
 
 interface SceneProps {
 	profile: DeviceProfile;
 	framing: Framing;
 	controlsRef: RefObject<CameraControlsImpl | null>;
-	/** Featured trips, one polaroid each. */
+	/** Every trip: a pin each, and a polaroid for the featured ones. */
 	trips: DeskTrip[];
-	/** Slug of the opened polaroid, or null. */
-	selected: string | null;
-	onSelect: (slug: string) => void;
+	map: DeskMap;
+	/** The opened item, or null. */
+	selected: ItemRef | null;
+	/** Item id with keyboard focus, or null. */
+	focused: string | null;
+	onSelect: (item: ItemRef) => void;
 	onClose: () => void;
 	/** Called once everything inside the Suspense boundary has loaded and been drawn. */
 	onReady: () => void;
 }
 
 /**
- * Everything inside the <Canvas>: lights, objects, camera controls.
+ * Everything inside the <Canvas>: lights, objects, camera controls, effects.
  *
  * Lighting, four layers:
  *   1. The lamp (a spotlight): the key light. Warm, casts the shadows, sets the mood.
@@ -41,14 +47,23 @@ interface SceneProps {
  * Fog in the background colour makes the far edges of the desk melt into the dark room. It starts
  * at the camera's distance from the desk's centre, so the middle of the desk is always clear.
  */
-export function Scene({ profile, framing, controlsRef, trips, selected, onSelect, onClose, onReady }: SceneProps) {
-	const placed = useMemo(() => placePolaroids(trips, framing.portrait), [trips, framing.portrait]);
-	// Where the camera should look while a polaroid is open. Memoised so the camera only moves
+export function Scene({ profile, framing, controlsRef, trips, map, selected, focused, onSelect, onClose, onReady }: SceneProps) {
+	const featured = useMemo(() => trips.filter((t) => t.featured), [trips]);
+	const placed = useMemo(() => placePolaroids(featured, framing.portrait), [featured, framing.portrait]);
+
+	// Where the camera should look while something is open. Memoised so the camera only moves
 	// when the selection actually changes.
-	const focus = useMemo(() => {
-		const p = placed.find((item) => item.trip.slug === selected);
-		return p ? presentedPosition(p.rest) : null;
-	}, [placed, selected]);
+	const focus = useMemo<Vector3Tuple | null>(() => {
+		if (!selected) return null;
+		if (selected.kind === 'polaroid') {
+			const p = placed.find((item) => item.trip.slug === selected.slug);
+			return p ? presentedPosition(p.rest) : null;
+		}
+		const trip = trips.find((t) => t.slug === selected.slug);
+		if (!trip?.map) return null;
+		const [x, y, z] = mapToDesk(map, trip.map);
+		return [x + TAG_OFFSET[0], y + TAG_OFFSET[1], z + TAG_OFFSET[2]];
+	}, [placed, trips, map, selected]);
 
 	return (
 		<>
@@ -59,9 +74,9 @@ export function Scene({ profile, framing, controlsRef, trips, selected, onSelect
 			<directionalLight position={[1.2, 1.5, 1.8]} color={PALETTE.moonlight} intensity={0.3} />
 			<Lamp shadowMapSize={profile.shadowMapSize} />
 
-			{/* Suspense: anything below that loads asynchronously (the handwriting font, cover
-			    photos) holds back this subtree until it's ready. <Ready> mounts last, so it only
-			    runs once everything else has. */}
+			{/* Suspense: anything below that loads asynchronously (the handwriting font, textures,
+			    cover photos) holds back this subtree until it's ready. <Ready> mounts last, so it
+			    only runs once everything else has. */}
 			<Suspense fallback={null}>
 				<Desk onClick={onClose} />
 				{/* Contact shadows: the scene is drawn from below into a small depth image, blurred,
@@ -78,9 +93,20 @@ export function Scene({ profile, framing, controlsRef, trips, selected, onSelect
 					opacity={0.55}
 					color="#1a0e06"
 				/>
+				<WorldMap map={map} onClick={onClose} />
+				<Pins
+					trips={trips}
+					map={map}
+					selected={selected}
+					focused={focused}
+					onSelect={onSelect}
+					onClose={onClose}
+					reducedMotion={profile.reducedMotion}
+				/>
 				<Polaroids
 					placed={placed}
 					selected={selected}
+					focused={focused}
 					onSelect={onSelect}
 					onClose={onClose}
 					textureWidth={profile.polaroidTextureWidth}

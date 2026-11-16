@@ -2,17 +2,8 @@ import { Html, useCursor, useTexture } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { BoxGeometry, ImageLoader, MathUtils, type Group, type Texture } from 'three';
-
-/**
- * ambientCG "Paper001" (CC0), 512px WebP; see /credits. Only the data maps: the colour comes
- * from the canvas-drawn print. The normal map gives the border its fibre texture under the lamp,
- * the roughness map keeps the sheen uneven the way coated paper is.
- */
-const PAPER = {
-	normalMap: '/textures/paper-normal.webp',
-	roughnessMap: '/textures/paper-roughness.webp',
-};
 import { presentedPosition, type PlacedPolaroid } from './layout';
+import { PAPER } from './paper';
 import {
 	createPolaroidBack,
 	createPolaroidFront,
@@ -20,7 +11,8 @@ import {
 	POLAROID_SIZE,
 	seededRandom,
 } from './polaroidTexture';
-import type { DeskTrip } from './types';
+import { TripCard } from './TripCard';
+import { itemId, sameItem, type ItemRef } from './types';
 
 const { width: W, height: H, thickness: T } = POLAROID_SIZE;
 
@@ -60,9 +52,11 @@ function createCurledGeometry(seed: string): BoxGeometry {
 
 interface PolaroidsProps {
 	placed: PlacedPolaroid[];
-	/** Slug of the opened polaroid, or null. */
-	selected: string | null;
-	onSelect: (slug: string) => void;
+	/** The opened item, or null. */
+	selected: ItemRef | null;
+	/** Item id with keyboard focus (see DeskApp), or null. */
+	focused: string | null;
+	onSelect: (item: ItemRef) => void;
 	onClose: () => void;
 	textureWidth: number;
 	reducedMotion: boolean;
@@ -75,7 +69,7 @@ interface PolaroidsProps {
  * the loading screen) until the handwriting font is ready, because a texture drawn before then
  * would be stuck with the fallback font.
  */
-export function Polaroids({ placed, selected, ...rest }: PolaroidsProps) {
+export function Polaroids({ placed, selected, focused, ...rest }: PolaroidsProps) {
 	use(loadCaptionFont(placed.map((p) => p.trip.caption).join('')));
 
 	// One back texture and one set of paper maps, shared by every polaroid.
@@ -84,17 +78,26 @@ export function Polaroids({ placed, selected, ...rest }: PolaroidsProps) {
 	const paper = useTexture(PAPER);
 
 	return placed.map((p) => {
-		const props = { placed: p, back, paper, selected: selected === p.trip.slug, anySelected: selected !== null, ...rest };
+		const props = {
+			placed: p,
+			back,
+			paper,
+			selected: sameItem(selected, { kind: 'polaroid', slug: p.trip.slug }),
+			anySelected: selected !== null,
+			focused: focused === itemId('polaroid', p.trip.slug),
+			...rest,
+		};
 		return p.trip.photo ? <PhotoPolaroid key={p.trip.slug} {...props} /> : <Polaroid key={p.trip.slug} {...props} image={null} />;
 	});
 }
 
-type PolaroidProps = Omit<PolaroidsProps, 'placed' | 'selected'> & {
+type PolaroidProps = Omit<PolaroidsProps, 'placed' | 'selected' | 'focused'> & {
 	placed: PlacedPolaroid;
 	back: Texture;
 	paper: { normalMap: Texture; roughnessMap: Texture };
 	selected: boolean;
 	anySelected: boolean;
+	focused: boolean;
 };
 
 /**
@@ -128,6 +131,7 @@ function Polaroid({
 	paper,
 	selected,
 	anySelected,
+	focused,
 	onSelect,
 	onClose,
 	textureWidth,
@@ -152,10 +156,11 @@ function Polaroid({
 	const [cardOpen, setCardOpen] = useState(false);
 	const cardOpenRef = useRef(false);
 	const presented = useMemo(() => presentedPosition(rest), [rest]);
-	const lifted = hovered && !selected;
+	// Keyboard focus (from the hidden item list in DeskApp) lifts it the same as hovering.
+	const lifted = (hovered || focused) && !selected;
 
 	// Pointer cursor while over a polaroid you can open.
-	useCursor(lifted);
+	useCursor(hovered && !selected);
 
 	useFrame(({ clock }, delta) => {
 		const m = mover.current;
@@ -200,7 +205,7 @@ function Polaroid({
 		// `delta`: how far (px) the pointer moved between press and release. A drag that ends
 		// on a polaroid is the visitor turning the camera, not a click.
 		if (e.delta > 4 || selected) return;
-		onSelect(trip.slug);
+		onSelect({ kind: 'polaroid', slug: trip.slug });
 	};
 
 	return (
@@ -243,7 +248,12 @@ function Polaroid({
 						emissiveIntensity={0.15}
 					/>
 				</mesh>
-				{cardOpen && <TripCard trip={trip} onClose={onClose} />}
+				{cardOpen && (
+					// Just off the back face, turned to face out from it, so it flips with the print.
+					<Html transform distanceFactor={CARD_DISTANCE_FACTOR} position={[0, 0, -T / 2 - 0.0004]} rotation={[0, Math.PI, 0]} zIndexRange={[1, 0]}>
+						<TripCard trip={trip} onClose={onClose} />
+					</Html>
+				)}
 			</group>
 
 			{lifted && !anySelected && (
@@ -256,46 +266,5 @@ function Polaroid({
 				</Html>
 			)}
 		</group>
-	);
-}
-
-/**
- * The trip card on the polaroid's back. Real HTML (crisp text, a real link, keyboard and screen
- * reader friendly), placed in 3D with <Html transform> so it turns with the print.
- */
-function TripCard({ trip, onClose }: { trip: DeskTrip; onClose: () => void }) {
-	const closeRef = useRef<HTMLButtonElement>(null);
-	// Move keyboard focus into the card when it opens. <Html> renders its contents in a separate
-	// React root and attaches them to the page a moment later, so wait a frame.
-	useEffect(() => {
-		const id = requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
-		return () => cancelAnimationFrame(id);
-	}, []);
-	const titleId = `trip-card-${trip.slug}`;
-
-	return (
-		<Html
-			transform
-			distanceFactor={CARD_DISTANCE_FACTOR}
-			// Just off the back face, turned to face out from it.
-			position={[0, 0, -T / 2 - 0.0004]}
-			rotation={[0, Math.PI, 0]}
-			zIndexRange={[1, 0]}
-		>
-			<article className="trip-card" role="dialog" aria-labelledby={titleId}>
-				<button ref={closeRef} type="button" className="trip-card-close" onClick={onClose} aria-label="Close">
-					×
-				</button>
-				<p className="trip-card-place">{trip.place}</p>
-				<h2 id={titleId} className="trip-card-title">
-					{trip.title}
-				</h2>
-				<p className="trip-card-dates">{trip.dates ?? <span className="todo">TODO: dates</span>}</p>
-				<p className="trip-card-blurb">{trip.blurb ?? <span className="todo">TODO: blurb</span>}</p>
-				<a className="trip-card-open" href={trip.href}>
-					Open trip <span aria-hidden="true">→</span>
-				</a>
-			</article>
-		</Html>
 	);
 }
