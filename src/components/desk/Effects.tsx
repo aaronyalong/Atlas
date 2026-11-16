@@ -1,13 +1,14 @@
 import { Bloom, DepthOfField, EffectComposer, N8AO, Noise, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { BlendFunction, ToneMappingMode } from 'postprocessing';
 import type { Vector3Tuple } from 'three';
-import { DESK_TARGET } from './camera';
 import type { DeviceProfile } from './device';
 
 interface EffectsProps {
 	profile: DeviceProfile;
 	/** Where an opened polaroid is held, or null: the point the lens focuses on. */
 	focus: Vector3Tuple | null;
+	/** What the lens focuses on when nothing is open: the camera's orbit target. */
+	target: Vector3Tuple;
 }
 
 /**
@@ -31,7 +32,7 @@ interface EffectsProps {
  *   - Noise: light film grain. It also hides the banding that smooth dark gradients show on
  *     8-bit screens.
  */
-export function Effects({ profile, focus }: EffectsProps) {
+export function Effects({ profile, focus, target }: EffectsProps) {
 	const mobile = profile.isMobile;
 	return (
 		<EffectComposer multisampling={mobile ? 0 : 4}>
@@ -39,7 +40,7 @@ export function Effects({ profile, focus }: EffectsProps) {
 			{mobile ? (
 				<></>
 			) : (
-				<DepthOfField target={focus ?? DESK_TARGET} worldFocusRange={focus ? 0.5 : 0.9} bokehScale={focus ? 4 : 2.5} />
+				<DepthOfField target={focus ?? target} worldFocusRange={focus ? 0.5 : 1.0} bokehScale={focus ? 4 : 3} />
 			)}
 			{/* Threshold well above 1: the bulb (8) and the shade's inside (~2.5) bloom; a lamp
 			    highlight on glossy paper (just over 1) must not, or prints start to sparkle. */}

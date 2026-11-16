@@ -1,58 +1,99 @@
 import { useTexture } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { PlaneGeometry, SRGBColorSpace } from 'three';
 import { PAPER } from './paper';
 import type { DeskMap } from './types';
 
-/** Where the sheet lies: the middle of the desk, a hair above it, turned a touch off square. */
-export const MAP_POSITION: [number, number, number] = [0, 0.0006, 0.0];
-export const MAP_TURN = 0.025;
+/** Where the sheet lies: the middle of the desk, a hair above it, set square to the desk. */
+export const MAP_POSITION: [number, number, number] = [0, 0.0008, 0];
+
+/*
+ * The sheet was folded to carry: in four across and once down. Unfolded on the desk, the creases
+ * still stand: the outer two across are mountain folds (ridges), the middle one a valley, and the
+ * one down the middle a ridge. Each panel lies flat between its creases, and the corners lift.
+ * Heights in metres.
+ */
+const FOLD_RIDGE = 0.005;
+const FOLD_DOWN = 0.003;
+const CORNER_LIFT = 0.004;
+
+/** Height of the sheet's surface above its base at a point (u, v: fractions from the top-left). */
+export function mapSurfaceHeight(u: number, v: number): number {
+	// Across: a zigzag through the creases at 1/4 (up), 1/2 (down), 3/4 (up), softened.
+	const x = u * 4;
+	const zig = [0, 1, 0, 1, 0];
+	const i = Math.min(3, Math.floor(x));
+	const t = x - i;
+	const across = FOLD_RIDGE * (zig[i] + (zig[i + 1] - zig[i]) * (t * t * (3 - 2 * t)));
+	// Down: a tent peaking at the middle crease.
+	const down = FOLD_DOWN * (1 - Math.abs(2 * v - 1));
+	// Corners curl up.
+	const cu = Math.max(0, Math.abs(2 * u - 1) - 0.8) / 0.2;
+	const cv = Math.max(0, Math.abs(2 * v - 1) - 0.7) / 0.3;
+	return across + down + CORNER_LIFT * cu * cu * cv * cv;
+}
+
+interface WorldMapProps {
+	map: DeskMap;
+	/** The pointer moved over the sheet (u, v from its top-left), or left it (null). */
+	onHover?: (uv: [number, number] | null) => void;
+	/** A click on the sheet (not the end of a drag), at (u, v). */
+	onPick?: (uv: [number, number]) => void;
+}
 
 /**
- * The map: a sheet of printed paper lying flat in the middle of the desk.
+ * The map: a large printed sheet lying across the middle of the desk, with its fold creases.
  *
- * It's a plane, subdivided so it can take a gentle curl (an unfolded map never lies quite flat;
- * the corners lift a millimetre or two). The print is the texture drawn by scripts/map.mjs; the
- * paper's fibre and matte sheen come from the same Paper001 maps the polaroids use.
+ * A finely subdivided plane, displaced by mapSurfaceHeight, so the creases are real geometry and
+ * catch the lamp and the moonlight at an angle. The print is the texture drawn by
+ * scripts/map.mjs; the paper's fibre and matte sheen come from the Paper001 texture maps.
+ *
+ * It answers the pointer: moving over it highlights the nearest place, a click opens it (the
+ * search for "nearest" happens in Scene, which knows the trips).
  */
-export function WorldMap({ map, onClick }: { map: DeskMap; onClick?: () => void }) {
+export function WorldMap({ map, onHover, onPick }: WorldMapProps) {
 	const gl = useThree((state) => state.gl);
 	const print = useTexture(map.src);
 	const paper = useTexture(PAPER);
 
 	useLayoutEffect(() => {
 		print.colorSpace = SRGBColorSpace;
-		print.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+		print.anisotropy = Math.min(16, gl.capabilities.getMaxAnisotropy());
 		print.needsUpdate = true;
 	}, [print, gl]);
 
 	const geometry = useMemo(() => {
-		const g = new PlaneGeometry(map.width, map.depth, 32, 16);
+		const g = new PlaneGeometry(map.width, map.depth, 160, 64);
 		const position = g.attributes.position;
 		for (let i = 0; i < position.count; i++) {
-			const nx = position.getX(i) / (map.width / 2);
-			const ny = position.getY(i) / (map.depth / 2);
-			// Corners lift most; the fold lines (thirds) sit a touch proud as well.
-			const corner = 0.0018 * (nx * nx * ny * ny);
-			const fold = 0.0004 * Math.max(0, 1 - Math.abs(Math.abs(nx) - 1 / 3) * 12);
-			position.setZ(i, corner + fold);
+			// Plane x/y → sheet u/v (v measured from the top, which lies toward the back).
+			const u = position.getX(i) / map.width + 0.5;
+			const v = 0.5 - position.getY(i) / map.depth;
+			position.setZ(i, mapSurfaceHeight(u, v));
 		}
 		g.computeVertexNormals();
 		return g;
 	}, [map.width, map.depth]);
 	useEffect(() => () => geometry.dispose(), [geometry]);
 
+	const uvOf = (e: ThreeEvent<PointerEvent | MouseEvent>): [number, number] | null => (e.uv ? [e.uv.x, 1 - e.uv.y] : null);
+
 	return (
 		<mesh
 			geometry={geometry}
 			position={MAP_POSITION}
-			rotation={[-Math.PI / 2, 0, MAP_TURN]}
+			rotation={[-Math.PI / 2, 0, 0]}
 			receiveShadow
-			castShadow
+			onPointerMove={(e) => {
+				e.stopPropagation();
+				onHover?.(uvOf(e));
+			}}
+			onPointerOut={() => onHover?.(null)}
 			onClick={(e) => {
 				e.stopPropagation();
-				if (e.delta <= 4) onClick?.();
+				const uv = uvOf(e);
+				if (e.delta <= 4 && uv) onPick?.(uv);
 			}}
 		>
 			<meshStandardMaterial
@@ -60,18 +101,13 @@ export function WorldMap({ map, onClick }: { map: DeskMap; onClick?: () => void 
 				normalMap={paper.normalMap}
 				normalScale={[0.3, 0.3]}
 				roughnessMap={paper.roughnessMap}
-				roughness={0.95}
+				roughness={0.9}
 			/>
 		</mesh>
 	);
 }
 
-/** Desk-space position of a point on the map given as fractions of its width and height. */
+/** Desk-space position of a point on the sheet's surface, given as fractions (u, v). */
 export function mapToDesk(map: DeskMap, [u, v]: [number, number]): [number, number, number] {
-	// On the sheet: x across, z down the sheet (v = 0 is the far/top edge). Then the sheet's turn.
-	const sx = (u - 0.5) * map.width;
-	const sz = (v - 0.5) * map.depth;
-	const cos = Math.cos(MAP_TURN);
-	const sin = Math.sin(MAP_TURN);
-	return [MAP_POSITION[0] + sx * cos - sz * -sin, MAP_POSITION[1], MAP_POSITION[2] + sx * -sin + sz * cos];
+	return [MAP_POSITION[0] + (u - 0.5) * map.width, MAP_POSITION[1] + mapSurfaceHeight(u, v), MAP_POSITION[2] + (v - 0.5) * map.depth];
 }

@@ -5,10 +5,9 @@ import type { DeskTrip } from './types';
  * The trip card: title, dates, blurb and the link to the trip's page. Real HTML (crisp text, a
  * real link, keyboard and screen-reader friendly), placed in 3D by the caller with <Html>.
  *
- * Two looks: the card printed on a polaroid's back, and the luggage tag that swings up from a
- * map pin. Same content and behaviour; the CSS (src/styles/desk.css) does the rest.
+ * Shown beside the trip's photos when its place on the map is opened (TripReveal.tsx).
  */
-export function TripCard({ trip, onClose, variant = 'card' }: { trip: DeskTrip; onClose: () => void; variant?: 'card' | 'tag' }) {
+export function TripCard({ trip, onClose }: { trip: DeskTrip; onClose: () => void }) {
 	const closeRef = useRef<HTMLButtonElement>(null);
 	// Move keyboard focus into the card when it opens. <Html> renders its contents in a separate
 	// React root and attaches them to the page a moment later, so wait a frame.
@@ -16,10 +15,10 @@ export function TripCard({ trip, onClose, variant = 'card' }: { trip: DeskTrip; 
 		const id = requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
 		return () => cancelAnimationFrame(id);
 	}, []);
-	const titleId = `trip-${variant}-${trip.slug}`;
+	const titleId = `trip-card-${trip.slug}`;
 
 	return (
-		<article className={variant === 'tag' ? 'trip-card trip-tag' : 'trip-card'} role="dialog" aria-labelledby={titleId}>
+		<article className="trip-card" role="dialog" aria-labelledby={titleId}>
 			<button ref={closeRef} type="button" className="trip-card-close" onClick={onClose} aria-label="Close">
 				×
 			</button>

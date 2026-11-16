@@ -10,8 +10,6 @@
  */
 const deg = (d: number) => (d * Math.PI) / 180;
 
-/** The point the camera looks at and orbits around: just in front of the desk's centre. */
-export const DESK_TARGET: [number, number, number] = [0, 0, 0.05];
 
 /** The orbit limits (the rotation part of "limited orbit"). */
 export const ORBIT_LIMITS = {
@@ -24,62 +22,81 @@ export const ORBIT_LIMITS = {
 	maxAzimuthAngle: deg(45),
 } as const;
 
-/** The polar angle the camera starts at: looking down at the desk at a comfortable slant. */
-const START_POLAR = deg(50);
-
 export interface Framing {
 	/** A tall (portrait) screen: framed differently, and the polaroids use the tall layout. */
 	portrait: boolean;
 	/** Vertical field of view, in degrees. */
 	fov: number;
-	/** Starting distance from DESK_TARGET. */
+	/** The point the camera looks at and orbits around. */
+	target: [number, number, number];
+	/** Starting polar angle, in radians. */
+	polar: number;
+	/** Starting distance from the target. */
 	distance: number;
 	/** Starting azimuth, in radians. */
 	azimuth: number;
-	/** Starting camera position (`azimuth`, START_POLAR, `distance` away from the target). */
+	/** Starting camera position (`azimuth`, `polar`, `distance` away from the target). */
 	position: [number, number, number];
 	/** How far in and out the visitor can zoom. */
 	minDistance: number;
 	maxDistance: number;
-	/** Camera distance from an opened polaroid: close enough to read its card comfortably. */
-	focusDistance: number;
 }
 
-/** An opened polaroid is viewed from the front, looking down at 45° (it tips up to match). */
+/** An opened place is viewed from the front, looking down at 45° (its photos tip up to match). */
 export const FOCUS_POLAR = deg(45);
 
 /**
- * The starting shot for a viewport's aspect ratio (width / height). A tall phone screen is
- * narrow, so it gets a wider lens, stands further back, and starts swung 25° to the right: a
- * three-quarter view that brings the lamp (at the desk's left) into the narrow frame.
+ * The starting shot for a viewport's aspect ratio (width / height).
  *
  * The lens is deliberately narrow (35°, like a 60 mm lens on a full-frame camera): a wide lens
  * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
- * game". The distance is chosen so the same stretch of desk fills the frame as it would at 40°.
+ * game". On a wide screen the camera looks across the desk at 55°, far enough back that the whole
+ * map, the lamp, both props and the room behind fit. A tall phone screen can't show a 1.4 m map
+ * across at a readable size, so it frames the stretch the trips cover (East Asia to the US, near
+ * the middle of the Pacific-centred map) and lets the rest run off the sides: drag or zoom out
+ * to see it all.
  */
 export function framingFor(aspect: number): Framing {
 	const portrait = aspect < 1;
-	const fov = portrait ? 45 : 35;
-	const distance = portrait ? 2.39 : 1.56;
-	const azimuth = portrait ? deg(25) : 0;
-	const [tx, ty, tz] = DESK_TARGET;
+	const fov = portrait ? 48 : 35;
+	const polar = portrait ? deg(48) : deg(55);
+	const distance = portrait ? 1.75 : 2.2;
+	const azimuth = 0;
+	const target: [number, number, number] = portrait ? [0.09, 0, -0.06] : [0, 0, -0.04];
+	const [tx, ty, tz] = target;
 	// Spherical → x/y/z: the polar angle tilts down from straight up, the azimuth swings around
 	// the vertical axis from the front (+z).
-	const horizontal = Math.sin(START_POLAR) * distance;
+	const horizontal = Math.sin(polar) * distance;
 	return {
 		portrait,
 		fov,
+		target,
+		polar,
 		distance,
 		azimuth,
 		position: [
 			tx + Math.sin(azimuth) * horizontal,
-			ty + Math.cos(START_POLAR) * distance,
+			ty + Math.cos(polar) * distance,
 			tz + Math.cos(azimuth) * horizontal,
 		],
-		minDistance: distance * 0.45,
-		maxDistance: distance * 1.35,
-		// Desktop: the card fills about half the screen's height. Phone: about two thirds of its
-		// width (a narrow screen runs out of width first).
-		focusDistance: portrait ? 0.45 : 0.39,
+		// Close enough to read the map's coastlines; not so far the desk is lost in the room.
+		minDistance: portrait ? 0.8 : 0.55,
+		maxDistance: portrait ? 4 : distance * 1.25,
+	};
+}
+
+/**
+ * The opening shot, before the camera cranes up to the starting view: low across the desk at the
+ * lamp, the window and the bookshelf, from a little to the right and further back.
+ */
+export function establishingShot(framing: Framing): { position: [number, number, number]; target: [number, number, number] } {
+	const polar = ORBIT_LIMITS.maxPolarAngle - deg(1);
+	const azimuth = framing.portrait ? deg(30) : deg(18);
+	const distance = framing.maxDistance;
+	const target: [number, number, number] = [-0.1, 0.12, -0.25];
+	const horizontal = Math.sin(polar) * distance;
+	return {
+		position: [target[0] + Math.sin(azimuth) * horizontal, target[1] + Math.cos(polar) * distance, target[2] + Math.cos(azimuth) * horizontal],
+		target,
 	};
 }

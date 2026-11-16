@@ -14,7 +14,7 @@ import { render } from 'astro:content';
 import '@fontsource/caveat/600.css';
 import PageLayout from '../../layouts/PageLayout.astro';
 import { MAP } from '../../lib/map/config';
-import { createMapProjection, locate } from '../../lib/map/projection';
+import { createMapSheet, locate } from '../../lib/map/projection';
 import { formatCoordinates, formatTripDates, getTrips, hasJournal, tripHref, tripName, type Trip } from '../../lib/trips';
 
 export const getStaticPaths = (async () => {
@@ -33,15 +33,15 @@ const { Content } = await render(trip);
 const journal = hasJournal(trip);
 
 // The locator stamp: the map texture, zoomed in around the trip's pin.
-const geometry = createMapProjection(MAP, MAP.textureWidth);
-const pin = locate(geometry, lat, lng);
+const sheet = createMapSheet(MAP);
+const pin = locate(sheet, lat, lng);
 const STAMP = 148; // px, the stamp's picture area
-const ZOOM_WIDTH = 1300; // px, how wide the whole map is drawn behind it
+const ZOOM_WIDTH = 1700; // px, how wide the whole map sheet is drawn behind it
 const stampStyle = pin
 	? [
 			`background-image: url(/map/${MAP.name}.webp)`,
 			`background-size: ${ZOOM_WIDTH}px auto`,
-			`background-position: ${STAMP / 2 - pin[0] * ZOOM_WIDTH}px ${STAMP / 2 - (pin[1] * ZOOM_WIDTH) / geometry.aspect}px`,
+			`background-position: ${STAMP / 2 - pin[0] * ZOOM_WIDTH}px ${STAMP / 2 - (pin[1] * ZOOM_WIDTH) / sheet.aspect}px`,
 		].join('; ')
 	: undefined;
 
@@ -223,7 +223,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		display: grid;
 		place-items: center;
 		aspect-ratio: 4 / 3;
-		background: linear-gradient(180deg, #4a4f7a, #b88aa8);
+		background: linear-gradient(180deg, #2b3542, #5d6b7c);
 	}
 
 	.placeholder .todo {
@@ -295,7 +295,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		position: relative;
 		width: 148px;
 		height: 148px;
-		background-color: #dfd6bf;
+		background-color: #12233b;
 		background-repeat: no-repeat;
 	}
 
@@ -306,7 +306,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		width: 14px;
 		height: 14px;
 		border-radius: 50%;
-		background: radial-gradient(circle at 35% 30%, #8aa8ff, #2f5bd3 55%, #1c3a8f);
+		background: radial-gradient(circle at 35% 30%, #b8ccff, #5b8cff 55%, #2f5bd3);
 		box-shadow:
 			0 0 0 2px rgb(255 255 255 / 0.8),
 			0 2px 4px rgb(0 0 0 / 0.4);

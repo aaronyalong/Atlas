@@ -10,8 +10,14 @@ export interface DeviceProfile {
 	dpr: [number, number];
 	/** Size (px) of the lamp's shadow map. Bigger = sharper shadow edges, more GPU memory. */
 	shadowMapSize: number;
-	/** Width (px) of each polaroid's front and back textures. */
-	polaroidTextureWidth: number;
+	/** Width (px) of the textures drawn for prints and the journal's page. */
+	printTextureWidth: number;
+	/** Books on the shelf (one instanced draw either way, but fewer to shade). */
+	bookCount: number;
+	/** Dust motes in the lamplight. */
+	dustCount: number;
+	/** The moonlight casts shadows (a second shadow map): desktop only. */
+	moonShadows: boolean;
 	/** The visitor asked their OS for less motion: camera moves snap instead of gliding. */
 	reducedMotion: boolean;
 }
@@ -23,7 +29,10 @@ export function getDeviceProfile(): DeviceProfile {
 		isMobile,
 		dpr: isMobile ? [1, 1.5] : [1, 2],
 		shadowMapSize: isMobile ? 1024 : 2048,
-		polaroidTextureWidth: isMobile ? 448 : 640,
+		printTextureWidth: isMobile ? 448 : 640,
+		bookCount: isMobile ? 140 : 240,
+		dustCount: isMobile ? 50 : 140,
+		moonShadows: !isMobile,
 		reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 	};
 }

@@ -350,58 +350,52 @@
 	outline-offset: 3px;
 }
 
-/* ---------- Luggage tag (on an opened map pin) ----------
- * The trip card again, as a kraft-paper tag: 360 × 230 px, scaled onto a 10 cm tag in 3D.
+/* ---------- Pin labels ----------
+ * Each place's name, always on show next to its pin (screen-space, so always upright). Placed
+ * above the pin, or beside it when two places are close; brighter while hovered or focused.
  */
-.trip-tag {
-	width: 360px;
-	height: 230px;
-	padding: 22px 26px 20px 48px;
-	background:
-		radial-gradient(circle at 24px 50%, rgb(0 0 0 / 0.55) 6px, rgb(0 0 0 / 0.18) 7px, transparent 9px),
-		linear-gradient(135deg, rgb(255 255 255 / 0.25), transparent 60%),
-		#d9c8a4;
-	border-radius: 10px 6px 6px 10px;
-	font-size: 15px;
-	box-shadow:
-		0 0 0 1px rgb(0 0 0 / 0.12),
-		0 16px 30px -12px rgb(0 0 0 / 0.7);
-}
-
-.trip-tag .trip-card-place {
+.pin-label {
+	display: block;
+	padding: 2px 8px;
+	background-color: color-mix(in srgb, #0b1220 78%, transparent);
+	border: 1px solid color-mix(in srgb, #5b8cff 45%, transparent);
+	border-radius: 999px;
+	color: #e6eaf5;
 	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+	transition:
+		border-color 0.2s ease,
+		background-color 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
-.trip-tag .trip-card-title {
-	font-size: 40px;
+.pin-label-above {
+	transform: translate(-50%, -100%);
 }
 
-.trip-tag .trip-card-dates {
-	margin-top: 4px;
-	font-size: 14px;
+.pin-label-left {
+	transform: translate(calc(-100% - 10px), -30%);
 }
 
-.trip-tag .trip-card-blurb {
-	margin-top: 8px;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	line-height: 1.35;
+.pin-label-right {
+	transform: translate(10px, -30%);
 }
 
-.trip-tag .trip-card-open {
-	padding: 6px 16px;
-	font-size: 14px;
+.pin-label-below {
+	transform: translate(-50%, 34px);
 }
 
-.trip-tag .trip-card-close {
-	top: 6px;
-	right: 6px;
-	width: 36px;
-	height: 36px;
-	font-size: 24px;
+@media (max-width: 40rem) {
+	.pin-label {
+		padding: 1px 6px;
+		font-size: 11px;
+	}
 }
 
-.trip-tag .todo {
-	font-size: 12px;
+.pin-label.is-active {
+	background-color: color-mix(in srgb, #142242 90%, transparent);
+	border-color: #8aa8ff;
+	box-shadow: 0 0 14px -2px color-mix(in srgb, #5b8cff 80%, transparent);
 }

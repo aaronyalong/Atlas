@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { MAP } from '../src/lib/map/config.ts';
-import { createMapProjection, locate } from '../src/lib/map/projection.ts';
+import { createMapSheet, locate } from '../src/lib/map/projection.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const W = 1200;
@@ -27,29 +27,30 @@ for (const file of (await readdir(dir)).filter((f) => f.endsWith('.md'))) {
 	if (Number.isFinite(lat) && Number.isFinite(lng)) trips.push({ lat, lng });
 }
 
-const geometry = createMapProjection(MAP, MAP.textureWidth);
-const mapW = 860;
-const mapH = Math.round(mapW / geometry.aspect);
+const sheet = createMapSheet(MAP);
+const mapW = 900;
+const mapH = Math.round(mapW / sheet.aspect);
 const mapPng = await sharp(path.join(root, 'public', 'map', `${MAP.name}.webp`)).resize(mapW, mapH).png().toBuffer();
 const pins = trips
-	.map(({ lat, lng }) => locate(geometry, lat, lng))
+	.map(({ lat, lng }) => locate(sheet, lat, lng))
 	.filter(Boolean)
 	.map(([u, v]) => {
 		const x = (u * mapW).toFixed(1);
 		const y = (v * mapH).toFixed(1);
-		return `<circle cx="${x}" cy="${y}" r="9" fill="#2f5bd3" stroke="#fff" stroke-width="2.5"/><circle cx="${x - 3}" cy="${y - 3}" r="3" fill="#fff" opacity="0.55"/>`;
+		return `<circle cx="${x}" cy="${y}" r="16" fill="none" stroke="#5b8cff" stroke-opacity="0.45" stroke-width="2"/><circle cx="${x}" cy="${y}" r="8" fill="#5b8cff" stroke="#fff" stroke-width="2"/><circle cx="${x - 2.5}" cy="${y - 2.5}" r="2.5" fill="#fff" opacity="0.6"/>`;
 	})
 	.join('');
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}">
   <defs>
     <radialGradient id="lamp" cx="38%" cy="42%" r="70%">
-      <stop offset="0" stop-color="#6b4630"/><stop offset="0.55" stop-color="#2a1a12"/><stop offset="1" stop-color="#0f0c0a"/>
+      <stop offset="0" stop-color="#2a2d33"/><stop offset="0.55" stop-color="#16181c"/><stop offset="1" stop-color="#0b0c0e"/>
     </radialGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity="0.55"/></filter>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="14"/></filter>
   </defs>
   <rect width="${W}" height="${H}" fill="url(#lamp)"/>
-  <g transform="translate(${(W - mapW) / 2 - 20} 150) rotate(-2.5 ${mapW / 2} ${mapH / 2})" filter="url(#shadow)">
+  <g transform="translate(${(W - mapW) / 2 + 40} 150) rotate(-2 ${mapW / 2} ${mapH / 2})">
+    <rect x="6" y="16" width="${mapW}" height="${mapH}" fill="#000" opacity="0.6" filter="url(#blur)"/>
     <image width="${mapW}" height="${mapH}" xlink:href="data:image/png;base64,${mapPng.toString('base64')}"/>
     ${pins}
   </g>

@@ -5,7 +5,7 @@ import { AgXToneMapping } from 'three';
 import { framingFor } from './camera';
 import { getDeviceProfile, hasWebGL } from './device';
 import { Scene } from './Scene';
-import { itemId, type DeskMap, type DeskTrip, type ItemRef } from './types';
+import type { DeskMap, DeskTrip } from './types';
 
 /**
  * The 3D desk island (mounted by src/pages/index.astro with client:only="react").
@@ -22,24 +22,24 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 	const [framing, setFraming] = useState(() => framingFor(window.innerWidth / window.innerHeight));
 	const [webgl] = useState(hasWebGL);
 	const [ready, setReady] = useState(false);
-	// The opened item and the keyboard-focused item. They live here, above the Canvas, so both
-	// the 3D scene and the HTML controls (Reset view, Escape, the item list) can read and change
-	// them.
-	const [selected, setSelected] = useState<ItemRef | null>(null);
-	const [focused, setFocused] = useState<string | null>(null);
+	// The opened place and the hovered one (by pointer, over the map or a pin, or by keyboard
+	// focus). They live here, above the Canvas, so both the 3D scene and the HTML controls
+	// (Reset view, Escape, the list of places) can read and change them.
+	const [selected, setSelected] = useState<string | null>(null);
+	const [hovered, setHovered] = useState<string | null>(null);
 	const controlsRef = useRef<CameraControlsImpl | null>(null);
 	const onReady = useCallback(() => setReady(true), []);
 
 	const close = useCallback(() => {
 		setSelected((current) => {
-			// Hand keyboard focus back to the item's button, so Tab carries on from where it was.
-			if (current) document.getElementById(`item-${itemId(current.kind, current.slug)}`)?.focus({ preventScroll: true });
+			// Hand keyboard focus back to the place's button, so Tab carries on from where it was.
+			if (current) document.getElementById(`place-${current}`)?.focus({ preventScroll: true });
 			return null;
 		});
 	}, []);
 
 	// Turning a phone between portrait and landscape: switch to the other framing (lens, starting
-	// shot, polaroid and prop layouts) and close any open card. Plain resizes within the same
+	// shot, reveal layout) and close any open place. Plain resizes within the same
 	// orientation keep the current view; the canvas itself always resizes.
 	useEffect(() => {
 		const onResize = () => {
@@ -67,17 +67,14 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 
 	if (!webgl) return <Fallback reason="Your browser can't show the 3D desk." />;
 
-	const items: { ref: ItemRef; label: string }[] = [
-		...trips.filter((t) => t.featured).map((t) => ({ ref: { kind: 'polaroid' as const, slug: t.slug }, label: `${t.title}, ${t.place}: photo` })),
-		...trips.filter((t) => t.map).map((t) => ({ ref: { kind: 'pin' as const, slug: t.slug }, label: `${t.title}, ${t.place}: map pin` })),
-	];
+	const places = trips.filter((t) => t.map);
 
 	return (
 		<SceneErrorBoundary>
 			<div className="desk-canvas">
 				<Canvas
 					// "percentage" = PCF shadows (three.js removed the old "soft" PCF type in r18x;
-					// the Lamp's shadow-radius does the softening now).
+					// each light's shadow-radius does the softening now).
 					shadows="percentage"
 					dpr={profile.dpr}
 					camera={{ fov: framing.fov, near: 0.05, far: 20, position: framing.position }}
@@ -100,39 +97,38 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 						trips={trips}
 						map={map}
 						selected={selected}
-						focused={focused}
+						hovered={hovered}
+						onHover={setHovered}
 						onSelect={setSelected}
 						onClose={close}
 						onReady={onReady}
+						ready={ready}
 					/>
 				</Canvas>
 			</div>
 
-			{/* Keyboard and screen-reader access to the desk: one button per item. Tab moves the
-			    focus (the item lifts and shows its label, the same as hovering), Enter opens it.
-			    Visually hidden: the 3D scene is the visible version of this list. */}
-			<ul className="visually-hidden" aria-label="Items on the desk">
-				{items.map(({ ref, label }) => {
-					const id = itemId(ref.kind, ref.slug);
-					return (
-						<li key={id}>
-							<button
-								type="button"
-								id={`item-${id}`}
-								onFocus={() => setFocused(id)}
-								onBlur={() => setFocused((f) => (f === id ? null : f))}
-								onClick={() => setSelected(ref)}
-							>
-								{label}
-							</button>
-						</li>
-					);
-				})}
+			{/* Keyboard and screen-reader access to the map: one button per place. Tab moves the
+			    focus (the pin lifts and its label lights up, the same as hovering), Enter opens it.
+			    Visually hidden: the map is the visible version of this list. */}
+			<ul className="visually-hidden" aria-label="Places on the map">
+				{places.map((t) => (
+					<li key={t.slug}>
+						<button
+							type="button"
+							id={`place-${t.slug}`}
+							onFocus={() => setHovered(t.slug)}
+							onBlur={() => setHovered((h) => (h === t.slug ? null : h))}
+							onClick={() => setSelected(t.slug)}
+						>
+							{t.title}, {t.place}
+						</button>
+					</li>
+				))}
 			</ul>
 
 			<div className="desk-hud">
 				<p className="desk-hint">
-					{profile.isMobile ? 'Tap a photo or pin · drag to look' : 'Click a photo or pin · drag to look around · scroll to zoom'}
+					{profile.isMobile ? 'Tap a place on the map · drag to look' : 'Click a place on the map · drag to look around · scroll to zoom'}
 				</p>
 				<button type="button" className="desk-pill" onClick={resetView}>
 					<ResetIcon />

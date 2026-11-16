@@ -1,169 +1,153 @@
 import { Html, useCursor } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { MathUtils, type Group } from 'three';
+import { useMemo, useRef } from 'react';
+import { DoubleSide, MathUtils, type Group, type Mesh, type MeshBasicMaterial } from 'three';
 import { seededRandom } from './polaroidTexture';
-import { TripCard } from './TripCard';
-import { itemId, sameItem, type DeskMap, type DeskTrip, type ItemRef } from './types';
+import type { DeskMap, DeskTrip } from './types';
 import { mapToDesk } from './WorldMap';
 
 /*
  * Push-pins, one per trip, stuck into the map at each trip's place.
  *
- * A pin is a steel needle with a glossy plastic head in the portfolio's accent blue: the same dot
- * the "Travel" pill sits on over at aaronyalong.com, so a visitor arriving from there lands on
- * something familiar. Each leans a few degrees in its own direction, like pins pushed in by hand.
+ * A steel needle with a glossy blue head (the portfolio's accent, brightened to stand out on the
+ * navy chart), a ring rippling out across the paper beneath it, and the place's name always on
+ * show. Each pin leans a few degrees in its own direction, like pins pushed in by hand.
  */
-const HEAD_RADIUS = 0.0055;
-const NEEDLE_LENGTH = 0.016;
-const NEEDLE_RADIUS = 0.0006;
-const HOVER_LIFT = 0.004;
+const HEAD_RADIUS = 0.007;
+const NEEDLE_LENGTH = 0.02;
+const NEEDLE_RADIUS = 0.0007;
+const HOVER_LIFT = 0.006;
 const EASE = 8;
-const HEAD_COLOR = '#2f5bd3';
-
-/** The luggage tag that swings up from an opened pin: 10 cm wide, laid out at 360 CSS px. */
-const TAG_WIDTH = 0.1;
-const TAG_WIDTH_PX = 360;
-const TAG_DISTANCE_FACTOR = (400 * TAG_WIDTH) / TAG_WIDTH_PX;
-/** Where the tag's centre ends up, relative to the pin's base. */
-export const TAG_OFFSET: [number, number, number] = [0, NEEDLE_LENGTH + HEAD_RADIUS + 0.03, 0.012];
+export const PIN_BLUE = '#5b8cff';
 
 interface PinsProps {
 	trips: DeskTrip[];
 	map: DeskMap;
-	selected: ItemRef | null;
-	/** Item id with keyboard focus (see DeskApp), or null. */
-	focused: string | null;
-	onSelect: (item: ItemRef) => void;
-	onClose: () => void;
+	/** The place under the pointer or keyboard focus, or null. */
+	hovered: string | null;
+	/** The opened place, or null. */
+	selected: string | null;
+	onHover: (slug: string | null) => void;
+	onSelect: (slug: string) => void;
 	reducedMotion: boolean;
 }
 
-export function Pins({ trips, map, selected, focused, onSelect, onClose, reducedMotion }: PinsProps) {
-	return trips.map((trip) =>
-		trip.map ? (
-			<Pin
-				key={trip.slug}
-				trip={trip}
-				position={mapToDesk(map, trip.map)}
-				selected={sameItem(selected, { kind: 'pin', slug: trip.slug })}
-				anySelected={selected !== null}
-				focused={focused === itemId('pin', trip.slug)}
-				onSelect={onSelect}
-				onClose={onClose}
-				reducedMotion={reducedMotion}
-			/>
-		) : null,
-	);
+export function Pins({ trips, map, hovered, selected, onHover, onSelect, reducedMotion }: PinsProps) {
+	// Labels go above their pin, unless other places are close by. Then the label moves away
+	// from them: to the left if the neighbours are east, to the right if they're west, below if
+	// they're on both sides (Portland, Zion and Dallas form such a cluster).
+	const placed = useMemo(() => {
+		const list = trips.filter((t) => t.map).map((trip) => ({ trip, position: mapToDesk(map, trip.map!) }));
+		return list.map((p) => {
+			const near = list.filter((q) => q !== p && Math.hypot(q.position[0] - p.position[0], q.position[2] - p.position[2]) < 0.12);
+			const east = near.some((q) => q.position[0] > p.position[0]);
+			const west = near.some((q) => q.position[0] < p.position[0]);
+			const side: LabelSide = east && west ? 'below' : east ? 'left' : west ? 'right' : 'above';
+			return { ...p, side };
+		});
+	}, [trips, map]);
+
+	return placed.map(({ trip, position, side }) => (
+		<Pin
+			key={trip.slug}
+			trip={trip}
+			position={position}
+			side={side}
+			hovered={hovered === trip.slug}
+			selected={selected === trip.slug}
+			anySelected={selected !== null}
+			onHover={onHover}
+			onSelect={onSelect}
+			reducedMotion={reducedMotion}
+		/>
+	));
 }
+
+type LabelSide = 'above' | 'below' | 'left' | 'right';
 
 interface PinProps {
 	trip: DeskTrip;
 	position: [number, number, number];
+	side: LabelSide;
+	hovered: boolean;
 	selected: boolean;
 	anySelected: boolean;
-	focused: boolean;
-	onSelect: (item: ItemRef) => void;
-	onClose: () => void;
+	onHover: (slug: string | null) => void;
+	onSelect: (slug: string) => void;
 	reducedMotion: boolean;
 }
 
-function Pin({ trip, position, selected, anySelected, focused, onSelect, onClose, reducedMotion }: PinProps) {
+function Pin({ trip, position, side, hovered, selected, anySelected, onHover, onSelect, reducedMotion }: PinProps) {
 	const lean = useMemo(() => {
 		const rand = seededRandom(`${trip.slug}:pin`);
 		const angle = (4 + rand() * 7) * (Math.PI / 180);
 		const direction = rand() * Math.PI * 2;
-		return { x: Math.sin(direction) * angle, z: Math.cos(direction) * angle };
+		return { x: Math.sin(direction) * angle, z: Math.cos(direction) * angle, phase: rand() * 3 };
 	}, [trip.slug]);
 
 	const lifter = useRef<Group>(null);
-	const tagGroup = useRef<Group>(null);
-	const [hovered, setHovered] = useState(false);
-	const [tagOpen, setTagOpen] = useState(false);
-	const tagOpenRef = useRef(false);
-	const lifted = (hovered || focused) && !selected;
+	const ring = useRef<Mesh>(null);
+	const lifted = hovered || selected;
 	useCursor(hovered && !selected);
 
-	useFrame((_, delta) => {
+	useFrame(({ clock }, delta) => {
 		const l = lifter.current;
-		const t = tagGroup.current;
-		if (!l || !t) return;
-		const k = reducedMotion ? Infinity : EASE;
-		const ease = (from: number, to: number) => MathUtils.damp(from, to, k, delta);
-
-		l.position.y = ease(l.position.y, lifted ? HOVER_LIFT : 0);
-
-		// The tag: lies flat and tiny at the pin's base when closed; when opened it rises to
-		// TAG_OFFSET, grows, and tips back to face a camera looking down at 45°.
-		t.position.set(ease(t.position.x, selected ? TAG_OFFSET[0] : 0), ease(t.position.y, selected ? TAG_OFFSET[1] : 0.002), ease(t.position.z, selected ? TAG_OFFSET[2] : 0));
-		const s = ease(t.scale.x, selected ? 1 : 0.01);
-		t.scale.setScalar(s);
-		t.rotation.x = ease(t.rotation.x, selected ? -Math.PI / 4 : -Math.PI / 2);
-
-		const open = selected && s > 0.9;
-		if (open !== tagOpenRef.current) {
-			tagOpenRef.current = open;
-			setTagOpen(open);
+		if (l) l.position.y = MathUtils.damp(l.position.y, lifted ? HOVER_LIFT : 0, reducedMotion ? Infinity : EASE, delta);
+		// The ripple: a ring that grows and fades every 2.6 s; faster and brighter when hovered.
+		const r = ring.current;
+		if (r) {
+			const material = r.material as MeshBasicMaterial;
+			if (reducedMotion) {
+				r.scale.setScalar(1.6);
+				material.opacity = lifted ? 0.6 : 0.35;
+			} else {
+				const t = ((clock.elapsedTime + lean.phase) / (lifted ? 1.4 : 2.6)) % 1;
+				r.scale.setScalar(1 + t * 2.2);
+				material.opacity = (1 - t) * (lifted ? 0.85 : 0.55);
+			}
 		}
 	});
 
-	// A closed tag's HTML is unmounted; the group keeps animating so re-opening is smooth.
-	useEffect(() => {
-		if (!selected) {
-			tagOpenRef.current = false;
-			setTagOpen(false);
-		}
-	}, [selected]);
-
 	const onPointerOver = (e: ThreeEvent<PointerEvent>) => {
 		e.stopPropagation();
-		setHovered(true);
+		onHover(trip.slug);
 	};
 	const onClick = (e: ThreeEvent<MouseEvent>) => {
 		e.stopPropagation();
 		if (e.delta > 4 || selected) return;
-		onSelect({ kind: 'pin', slug: trip.slug });
+		onSelect(trip.slug);
 	};
 
 	return (
 		<group position={position}>
+			{/* The ripple, lying on the paper. */}
+			<mesh ref={ring} position={[0, 0.0012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+				<ringGeometry args={[0.009, 0.0115, 48]} />
+				<meshBasicMaterial color={PIN_BLUE} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />
+			</mesh>
+
 			<group ref={lifter}>
 				<group rotation={[lean.x, 0, lean.z]}>
 					{/* Needle: polished steel, pushed in so only part of it shows. */}
 					<mesh position={[0, NEEDLE_LENGTH / 2 - 0.003, 0]} castShadow>
 						<cylinderGeometry args={[NEEDLE_RADIUS, NEEDLE_RADIUS, NEEDLE_LENGTH + 0.006, 8]} />
-						<meshStandardMaterial color="#d6d6da" metalness={1} roughness={0.28} />
+						<meshStandardMaterial color="#d6d6da" metalness={1} roughness={0.32} />
 					</mesh>
-					{/* Head: glossy plastic. A clearcoat layer gives the sharp lamp highlight plastic has. */}
-					<mesh
-						position={[0, NEEDLE_LENGTH + HEAD_RADIUS * 0.8, 0]}
-						castShadow
-						onPointerOver={onPointerOver}
-						onPointerOut={() => setHovered(false)}
-						onClick={onClick}
-					>
+					{/* Head: glossy plastic, with a clearcoat for the sharp highlight plastic has. */}
+					<mesh position={[0, NEEDLE_LENGTH + HEAD_RADIUS * 0.8, 0]} castShadow onPointerOver={onPointerOver} onPointerOut={() => onHover(null)} onClick={onClick}>
 						<sphereGeometry args={[HEAD_RADIUS, 24, 18]} />
-						<meshPhysicalMaterial color={HEAD_COLOR} roughness={0.35} clearcoat={1} clearcoatRoughness={0.1} />
+						<meshPhysicalMaterial color={PIN_BLUE} emissive={PIN_BLUE} emissiveIntensity={lifted ? 0.35 : 0.12} roughness={0.3} clearcoat={1} clearcoatRoughness={0.08} />
 					</mesh>
 					{/* A larger invisible target, so the pin is easy to hit with a finger. */}
-					<mesh position={[0, NEEDLE_LENGTH, 0]} onPointerOver={onPointerOver} onPointerOut={() => setHovered(false)} onClick={onClick} visible={false}>
-						<sphereGeometry args={[0.014, 8, 6]} />
+					<mesh position={[0, NEEDLE_LENGTH, 0]} onPointerOver={onPointerOver} onPointerOut={() => onHover(null)} onClick={onClick} visible={false}>
+						<sphereGeometry args={[0.018, 8, 6]} />
 					</mesh>
 				</group>
 
-				{lifted && !anySelected && (
-					<Html position={[0, NEEDLE_LENGTH + 0.02, 0]} center zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
-						<span className="desk-label">
-							{trip.title}, {trip.place}
-						</span>
-					</Html>
-				)}
-			</group>
-
-			<group ref={tagGroup} position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={0.01}>
-				{tagOpen && (
-					<Html transform distanceFactor={TAG_DISTANCE_FACTOR} zIndexRange={[1, 0]}>
-						<TripCard trip={trip} onClose={onClose} variant="tag" />
+				{!anySelected && (
+					// Screen-space label (no `transform`): always upright and readable.
+					<Html position={[0, NEEDLE_LENGTH + 0.016, 0]} zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
+						<span className={`pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}>{trip.title}</span>
 					</Html>
 				)}
 			</group>

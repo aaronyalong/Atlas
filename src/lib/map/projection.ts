@@ -2,24 +2,31 @@ import { geoNaturalEarth1, type GeoProjection } from 'd3-geo';
 import type { MapConfig } from './config.ts';
 
 /**
- * The map projection, shared by the texture script (scripts/map.mjs) and the page that places
- * the pins (src/pages/index.astro). Both must agree exactly, or pins drift off their cities.
+ * The map projection and the sheet it's printed on, shared by the texture script
+ * (scripts/map.mjs), the page that places the pins (src/pages/index.astro), the trip pages' map
+ * stamp and the link-preview card. They must all agree exactly, or pins drift off their cities.
  *
  * Natural Earth is a compromise projection: neither shapes nor areas are exact, but nothing is
- * grossly stretched, which is why atlases use it. The crop rectangle is defined in the rotated
- * lon/lat space; its outline is projected, its bounding box found, and the projection scaled and
- * shifted so that box fills `width` × `height` pixels.
+ * grossly stretched, which is why atlases use it.
+ *
+ * The sheet is the chart (the projected world, cropped) plus margins: a band at the top for the
+ * title, a band at the bottom for the scale, and narrow sides. All measurements are in texture
+ * pixels; `uv` positions are fractions of the whole sheet from its top-left corner.
  */
-export interface MapGeometry {
+export interface MapSheet {
+	/** Projects [lng, lat] to sheet pixels. */
 	projection: GeoProjection;
+	/** The whole sheet, in pixels. */
 	width: number;
 	height: number;
-	/** width / height of the cropped map. */
+	/** The chart's rectangle on the sheet, in pixels. */
+	chart: { x: number; y: number; width: number; height: number };
+	/** width / height of the whole sheet. */
 	aspect: number;
 }
 
-export function createMapProjection(config: MapConfig, width: number): MapGeometry {
-	const { rotation, crop } = config;
+export function createMapSheet(config: MapConfig, width = config.textureWidth): MapSheet {
+	const { rotation, crop, margins } = config;
 	const projection = geoNaturalEarth1().rotate(rotation).scale(1).translate([0, 0]);
 
 	// Walk the crop's outline (in absolute lon/lat) and project it to find its extent.
@@ -47,28 +54,36 @@ export function createMapProjection(config: MapConfig, width: number): MapGeomet
 		sample(crop.lng[1], lat);
 	}
 
-	const aspect = (maxX - minX) / (maxY - minY);
-	const height = Math.round(width / aspect);
-	const scale = width / (maxX - minX);
+	const chartWidth = width * (1 - 2 * margins.side);
+	const chartHeight = chartWidth * ((maxY - minY) / (maxX - minX));
+	const chartX = width * margins.side;
+	const chartY = chartHeight * margins.top;
+	const height = Math.round(chartY + chartHeight + chartHeight * margins.bottom);
+	const scale = chartWidth / (maxX - minX);
 	projection
 		.scale(scale)
-		.translate([-minX * scale, -minY * scale])
+		.translate([chartX - minX * scale, chartY - minY * scale])
 		.clipExtent([
-			[0, 0],
-			[width, height],
+			[chartX, chartY],
+			[chartX + chartWidth, chartY + chartHeight],
 		]);
-	return { projection, width, height, aspect };
+	return {
+		projection,
+		width,
+		height,
+		chart: { x: chartX, y: chartY, width: chartWidth, height: chartHeight },
+		aspect: width / height,
+	};
 }
 
 /**
- * A trip's place on the map, as fractions of its width and height (0–1 from the top-left), or
- * null if it falls outside the crop.
+ * A place's position on the sheet, as fractions of its width and height (0–1 from the top-left),
+ * or null if it falls outside the chart's crop.
  */
-export function locate(geometry: MapGeometry, lat: number, lng: number): [number, number] | null {
-	const p = geometry.projection([lng, lat]);
+export function locate(sheet: MapSheet, lat: number, lng: number): [number, number] | null {
+	const p = sheet.projection([lng, lat]);
 	if (!p) return null;
-	const u = p[0] / geometry.width;
-	const v = p[1] / geometry.height;
-	if (u < 0 || u > 1 || v < 0 || v > 1) return null;
-	return [u, v];
+	const { x, y, width, height } = sheet.chart;
+	if (p[0] < x || p[0] > x + width || p[1] < y || p[1] > y + height) return null;
+	return [p[0] / sheet.width, p[1] / sheet.height];
 }

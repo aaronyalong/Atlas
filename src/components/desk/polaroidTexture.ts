@@ -162,22 +162,7 @@ function drawWear(ctx: CanvasRenderingContext2D, w: number, h: number, mm: numbe
 	}
 }
 
-/** The back: plain cream card stock with a faint fibre texture. The trip card sits on it. */
-export function createPolaroidBack(width: number): CanvasTexture {
-	const mm = width / PRINT.width;
-	const { canvas, ctx } = makeCanvas(width, Math.round(PRINT.height * mm));
-	const rand = seededRandom('back');
-	ctx.fillStyle = PALETTE.paper;
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
-	for (let i = 0; i < 900; i++) {
-		ctx.fillStyle = rand() < 0.5 ? 'rgba(120, 95, 60, 0.05)' : 'rgba(255, 255, 255, 0.08)';
-		ctx.fillRect(rand() * canvas.width, rand() * canvas.height, (1 + rand() * 3) * mm * 0.3, mm * 0.25);
-	}
-	drawWear(ctx, canvas.width, canvas.height, mm, rand);
-	return toTexture(canvas);
-}
-
-/** No photo yet: a soft dusk gradient and a visible TODO. */
+/** No photo yet: a slate-blue gradient and a visible TODO. */
 function drawPlaceholder(
 	ctx: CanvasRenderingContext2D,
 	x: number,
@@ -185,10 +170,10 @@ function drawPlaceholder(
 	size: number,
 	rand: () => number,
 ) {
-	const hue = 190 + rand() * 140; // blue through violet to rose
+	const hue = 205 + rand() * 20; // slate blue to steel
 	const sky = ctx.createLinearGradient(x, y, x, y + size);
-	sky.addColorStop(0, `hsl(${hue} 35% 38%)`);
-	sky.addColorStop(1, `hsl(${(hue + 40) % 360} 45% 68%)`);
+	sky.addColorStop(0, `hsl(${hue} 22% 22%)`);
+	sky.addColorStop(1, `hsl(${hue + 6} 16% 46%)`);
 	ctx.fillStyle = sky;
 	ctx.fillRect(x, y, size, size);
 

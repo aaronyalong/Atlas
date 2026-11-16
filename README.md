@@ -1,7 +1,10 @@
 # Atlas: travel.aaronyalong.com
 
 Aaron Yalong's travel scrapbook, a companion to [aaronyalong.com](https://aaronyalong.com).
-The home page is a lamp-lit 3D desk (React Three Fiber in an Astro island). Every trip is also
+The home page is a 3D desk in a dark studio at night (React Three Fiber in an Astro island): a
+large world map across the desk with a pin for every trip, a banker's lamp, a Nikon and a
+journal; black steel shelving with a terminal and Tux; a window onto mountains. Click a place on
+the map and that trip's photos rise out of it with its details. Every trip is also
 reachable without the 3D at [`/trips`](src/pages/trips.astro).
 
 ## Commands
@@ -19,7 +22,10 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 ## Where things live
 
 - `src/components/desk/`: the 3D scene. Start at `DeskApp.tsx` (the island) → `Scene.tsx`.
-  Camera framing and orbit limits are in `camera.ts`; colours in `palette.ts`.
+  Camera framing, orbit limits and the opening shot are in `camera.ts`; colours in `palette.ts`.
+  The room (wall, window, shelving, terminal, Tux, moonlight) is `Room.tsx`; the lamp is
+  `BankersLamp.tsx`; the map and its pins are `WorldMap.tsx` and `Pins.tsx`; what opens when a
+  place is clicked is `TripReveal.tsx`; the journal and camera are `Props.tsx`.
 - `src/content/trips/`: one Markdown file per trip (schema in `src/content.config.ts`). Put a
   trip's photos in a folder next to it (e.g. `tokyo/cover.jpg`); they're re-encoded at build
   time, which strips EXIF/GPS, and the originals are never published.
@@ -59,9 +65,11 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
 ## Adding a trip
 
 1. Add `src/content/trips/<slug>.md` with at least `title`, `place`, `lat`, `lng` (see the
-   schema in `src/content.config.ts`). Add `featured: true` for a polaroid on the desk.
+   schema in `src/content.config.ts`). It gets a pin on the map.
 2. Put its photos in `src/content/trips/<slug>/` and reference them as `cover` (with
-   `coverAlt`) and `photos`. They're re-encoded at build time; EXIF and GPS are stripped.
+   `coverAlt`) and `photos` (with `alt`, optional `caption`). The cover and up to five more rise
+   out of the map when the place is clicked. They're re-encoded at build time; EXIF and GPS are
+   stripped.
 3. Write the journal as the file's Markdown body.
 4. If it's outside the map's crop, the build warns: widen `src/lib/map/config.ts` and run
    `npm run map`. Run `npm run og` to put its pin on the link-preview card.

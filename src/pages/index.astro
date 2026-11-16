@@ -8,48 +8,48 @@
  * shows the `fallback` slot, which is the same loading screen the island then takes over.
  */
 import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import '@fontsource/caveat/600.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import DeskApp from '../components/desk/DeskApp';
 import type { DeskMap, DeskTrip } from '../components/desk/types';
 import { MAP } from '../lib/map/config';
-import { createMapProjection, locate } from '../lib/map/projection';
+import { createMapSheet, locate } from '../lib/map/projection';
 import { PORTFOLIO_URL } from '../lib/site';
 import { formatTripDates, getTrips, tripHref } from '../lib/trips';
 import '../styles/desk.css';
 
 /*
- * Build time: turn the trips into the plain data the 3D island needs. Cover photos go through
- * Astro's image pipeline (sharp): resized, re-encoded to WebP, and stripped of EXIF/GPS
- * metadata. The island only ever sees the processed file's URL. Each trip's lat/lng is
- * projected here, with the same code that drew the map texture (scripts/map.mjs), into a
- * position on the sheet; d3-geo never reaches the browser.
+ * Build time: turn the trips into the plain data the 3D island needs.
+ *
+ * Photos (the cover, then the gallery) go through Astro's image pipeline (sharp): resized,
+ * re-encoded to WebP, and stripped of EXIF/GPS metadata. The island only ever sees the processed
+ * files' URLs, and only loads them when that trip is opened. Each trip's lat/lng is projected
+ * here, with the same code that drew the map texture (scripts/map.mjs), into a position on the
+ * sheet; d3-geo never reaches the browser.
  */
-const geometry = createMapProjection(MAP, MAP.textureWidth);
-const mapWidth = Math.min(MAP.maxSize.width, MAP.maxSize.depth * geometry.aspect);
-const deskMap: DeskMap = { src: `/map/${MAP.name}.webp`, width: mapWidth, depth: mapWidth / geometry.aspect };
+const sheet = createMapSheet(MAP);
+const deskMap: DeskMap = { src: `/map/${MAP.name}.webp`, width: MAP.sheetWidth, depth: MAP.sheetWidth / sheet.aspect };
+
+const webp = async (src: ImageMetadata) => (await getImage({ src, width: 900, format: 'webp', quality: 80 })).src;
 
 const deskTrips: DeskTrip[] = await Promise.all(
 	(await getTrips()).map(async (trip) => {
-		const { title, place, caption, blurb, cover, coverAlt, featured, lat, lng } = trip.data;
-		const map = locate(geometry, lat, lng);
+		const { title, place, blurb, cover, coverAlt, photos, lat, lng } = trip.data;
+		const map = locate(sheet, lat, lng);
 		if (!map) console.warn(`${trip.id} (${lat}, ${lng}) is outside the map's crop; it gets no pin. Widen the crop in src/lib/map/config.ts.`);
-		const photo = cover
-			? {
-					src: (await getImage({ src: cover, width: 800, format: 'webp', quality: 80 })).src,
-					alt: coverAlt ?? '',
-				}
-			: null;
+		const prints = [
+			...(cover ? [{ src: await webp(cover), alt: coverAlt ?? '', caption: null }] : []),
+			...(await Promise.all(photos.map(async (p) => ({ src: await webp(p.src), alt: p.alt, caption: p.caption ?? null })))),
+		];
 		return {
 			slug: trip.id,
 			title,
 			place,
-			caption: caption ?? title,
 			dates: formatTripDates(trip),
 			blurb: blurb ?? null,
 			href: tripHref(trip),
-			photo,
-			featured,
+			photos: prints,
 			map,
 		};
 	}),
