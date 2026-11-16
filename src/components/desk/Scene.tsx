@@ -1,9 +1,10 @@
-import { Environment, Lightformer, type CameraControlsImpl } from '@react-three/drei';
+import { ContactShadows, Environment, type CameraControlsImpl } from '@react-three/drei';
 import { Suspense, useEffect, useMemo, type RefObject } from 'react';
 import { CameraRig } from './CameraRig';
 import type { Framing } from './camera';
-import { Desk } from './Desk';
+import { Desk, DESK } from './Desk';
 import type { DeviceProfile } from './device';
+import { Effects } from './Effects';
 import { Lamp } from './Lamp';
 import { placePolaroids, presentedPosition } from './layout';
 import { PALETTE } from './palette';
@@ -33,9 +34,10 @@ interface SceneProps {
  *      read as deep blue-brown instead of pure black.
  *   3. A faint cool directional light from the front-right ("moonlight"), so objects facing
  *      away from the lamp, like the lamp itself, still show their shape.
- *   4. A tiny environment map built from Lightformers (glowing panels rendered once into a cube
- *      map): no lighting of its own to speak of, but it gives shiny surfaces (varnish, brass)
- *      something to reflect. Made in-scene, so nothing is downloaded from a CDN.
+ *   4. An environment map: a 360° photo of a dim room (Poly Haven's "small empty room 1", CC0,
+ *      downsampled to 512×256 and served from /env/). It gives shiny surfaces (varnish, brass)
+ *      a real room to reflect, with the uneven brightness a real room has, and adds a faint
+ *      image-based fill. Kept dim so the lamp stays in charge of the mood.
  * Fog in the background colour makes the far edges of the desk melt into the dark room. It starts
  * at the camera's distance from the desk's centre, so the middle of the desk is always clear.
  */
@@ -51,9 +53,9 @@ export function Scene({ profile, framing, controlsRef, trips, selected, onSelect
 	return (
 		<>
 			<color attach="background" args={[PALETTE.sceneBg]} />
-			<fog attach="fog" args={[PALETTE.sceneBg, framing.distance, framing.distance + 1]} />
+			<fog attach="fog" args={[PALETTE.sceneBg, framing.distance + (framing.portrait ? 0.35 : 0), framing.distance + 1.1]} />
 
-			<hemisphereLight args={[PALETTE.moonlight, PALETTE.bounce, 0.45]} />
+			<hemisphereLight args={[PALETTE.moonlight, PALETTE.bounce, 0.3]} />
 			<directionalLight position={[1.2, 1.5, 1.8]} color={PALETTE.moonlight} intensity={0.3} />
 			<Lamp shadowMapSize={profile.shadowMapSize} />
 
@@ -61,7 +63,21 @@ export function Scene({ profile, framing, controlsRef, trips, selected, onSelect
 			    photos) holds back this subtree until it's ready. <Ready> mounts last, so it only
 			    runs once everything else has. */}
 			<Suspense fallback={null}>
-				<Desk textureSize={profile.textureSize} onClick={onClose} />
+				<Desk onClick={onClose} />
+				{/* Contact shadows: the scene is drawn from below into a small depth image, blurred,
+				    and laid on the desk as a soft dark halo under everything that touches it. It
+				    glues objects to the surface in a way a single light's shadow can't. Re-drawn
+				    every frame on desktop so it follows a lifted polaroid; static on phones. */}
+				<ContactShadows
+					position={[0, 0.0005, DESK.centerZ]}
+					scale={[DESK.width, DESK.depth]}
+					resolution={profile.isMobile ? 256 : 512}
+					frames={profile.isMobile ? 1 : Infinity}
+					far={0.25}
+					blur={2.2}
+					opacity={0.55}
+					color="#1a0e06"
+				/>
 				<Polaroids
 					placed={placed}
 					selected={selected}
@@ -70,14 +86,18 @@ export function Scene({ profile, framing, controlsRef, trips, selected, onSelect
 					textureWidth={profile.polaroidTextureWidth}
 					reducedMotion={profile.reducedMotion}
 				/>
-				<Environment resolution={64} environmentIntensity={0.35}>
-					<Lightformer form="rect" color={PALETTE.lamp} intensity={3} position={[-1, 2, -0.6]} scale={[1.5, 1, 1]} />
-					<Lightformer form="rect" color={PALETTE.moonlight} intensity={0.8} position={[2, 1.5, -2]} scale={[2, 2, 1]} />
-				</Environment>
+				<Environment
+					files="/env/small_empty_room_1_512.hdr"
+					environmentIntensity={0.1}
+					// Turn the room so its window sits behind the camera: that's what the varnish
+					// reflects when you look down at the desk.
+					environmentRotation={[0, Math.PI * 0.75, 0]}
+				/>
 				<Ready onReady={onReady} />
 			</Suspense>
 
 			<CameraRig controlsRef={controlsRef} framing={framing} reducedMotion={profile.reducedMotion} focus={focus} />
+			<Effects profile={profile} focus={focus} />
 		</>
 	);
 }

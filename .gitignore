@@ -27,3 +27,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Local-only screenshots for the dev-only /dev/compare page (see src/pages/dev/[page].astro)
+src/dev-shots/

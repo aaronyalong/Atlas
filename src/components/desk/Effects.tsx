@@ -1,0 +1,52 @@
+import { Bloom, DepthOfField, EffectComposer, N8AO, Noise, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { BlendFunction, ToneMappingMode } from 'postprocessing';
+import type { Vector3Tuple } from 'three';
+import { DESK_TARGET } from './camera';
+import type { DeviceProfile } from './device';
+
+interface EffectsProps {
+	profile: DeviceProfile;
+	/** Where an opened polaroid is held, or null: the point the lens focuses on. */
+	focus: Vector3Tuple | null;
+}
+
+/**
+ * Screen-space effects, applied to the finished frame in order.
+ *
+ * How it works: instead of drawing straight to the screen, the scene is drawn into an off-screen
+ * buffer (in half-float, so brightness above 1 survives), each effect reads that buffer and
+ * writes a new one, and the last writes to the screen. The composer turns the renderer's own
+ * tone mapping off, since that only applies when drawing to the screen; the ToneMapping effect
+ * at the end puts AgX back.
+ *
+ *   - N8AO (ambient occlusion): darkens creases and the places where objects meet, from every
+ *     direction, which the lamp's single hard shadow can't do. Desktop only: it reads depth and
+ *     normals many times per pixel.
+ *   - Depth of field: blurs what's further from the focus point than a real lens at a wide
+ *     aperture would keep sharp. Focus follows an opened polaroid. Desktop only (it blurs the
+ *     whole frame several times).
+ *   - Bloom: the glow a camera sensor records around a bare bulb. The threshold is well above
+ *     1, so only the bulb and the inside of the shade (drawn far brighter than white) bloom.
+ *   - Vignette: slight darkening toward the corners, which pulls the eye to the lamp pool.
+ *   - Noise: light film grain. It also hides the banding that smooth dark gradients show on
+ *     8-bit screens.
+ */
+export function Effects({ profile, focus }: EffectsProps) {
+	const mobile = profile.isMobile;
+	return (
+		<EffectComposer multisampling={mobile ? 0 : 4}>
+			{mobile ? <></> : <N8AO quality="medium" aoRadius={0.12} distanceFalloff={0.4} intensity={2.5} halfRes />}
+			{mobile ? (
+				<></>
+			) : (
+				<DepthOfField target={focus ?? DESK_TARGET} worldFocusRange={focus ? 0.5 : 0.9} bokehScale={focus ? 4 : 2.5} />
+			)}
+			{/* Threshold well above 1: the bulb (8) and the shade's inside (~2.5) bloom; a lamp
+			    highlight on glossy paper (just over 1) must not, or prints start to sparkle. */}
+			<Bloom luminanceThreshold={1.8} luminanceSmoothing={0.4} intensity={0.7} mipmapBlur radius={0.6} />
+			<Vignette offset={0.25} darkness={0.65} />
+			<Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={profile.reducedMotion ? 0 : 0.18} />
+			<ToneMapping mode={ToneMappingMode.AGX} />
+		</EffectComposer>
+	);
+}

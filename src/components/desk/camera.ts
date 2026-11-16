@@ -52,11 +52,15 @@ export const FOCUS_POLAR = deg(45);
  * The starting shot for a viewport's aspect ratio (width / height). A tall phone screen is
  * narrow, so it gets a wider lens, stands further back, and starts swung 25° to the right: a
  * three-quarter view that brings the lamp (at the desk's left) into the narrow frame.
+ *
+ * The lens is deliberately narrow (35°, like a 60 mm lens on a full-frame camera): a wide lens
+ * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
+ * game". The distance is chosen so the same stretch of desk fills the frame as it would at 40°.
  */
 export function framingFor(aspect: number): Framing {
 	const portrait = aspect < 1;
-	const fov = portrait ? 55 : 40;
-	const distance = portrait ? 1.9 : 1.35;
+	const fov = portrait ? 45 : 35;
+	const distance = portrait ? 2.39 : 1.56;
 	const azimuth = portrait ? deg(25) : 0;
 	const [tx, ty, tz] = DESK_TARGET;
 	// Spherical → x/y/z: the polar angle tilts down from straight up, the azimuth swings around
@@ -76,6 +80,6 @@ export function framingFor(aspect: number): Framing {
 		maxDistance: distance * 1.35,
 		// Desktop: the card fills about half the screen's height. Phone: about two thirds of its
 		// width (a narrow screen runs out of width first).
-		focusDistance: portrait ? 0.36 : 0.34,
+		focusDistance: portrait ? 0.45 : 0.39,
 	};
 }

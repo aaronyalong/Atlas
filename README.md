@@ -28,6 +28,17 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 Only assets whose licence allows use here (CC0, or CC-BY with credit). Every third-party asset
 is listed on [`/credits`](src/pages/credits.astro), whether its licence requires it or not.
 
+- `public/textures/`: ambientCG Wood051 and Paper001, re-encoded from the 1K JPG sets to WebP
+  (wood 1024px, paper 512px). Only colour (wood), normal and roughness maps are kept.
+- `public/env/`: Poly Haven `small_empty_room_1`, the 1k HDR halved to 512×256 (a 2×2 box filter
+  in linear light). The scene uses it for reflections and a faint fill; the lamp is the key light.
+
+## Dev-only pages
+
+`src/pages/dev/[page].astro` serves `/dev/compare` under `npm run dev` only: a production build
+emits nothing for it. It shows before/after sliders for the realism pass from screenshots in
+`src/dev-shots/` (git-ignored, local only).
+
 ## Roadmap
 
 1. ~~Empty desk, lighting, camera~~

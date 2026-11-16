@@ -104,7 +104,62 @@ export function createPolaroidFront({ width, photo, caption, seed }: FrontOption
 	ctx.fillText(caption, 0, 0);
 	ctx.restore();
 
+	drawWear(ctx, canvas.width, canvas.height, mm, rand);
 	return toTexture(canvas);
+}
+
+/**
+ * Edge wear: the greying a print picks up from being handled. Rubbed corners, a faint scuff here
+ * and there along the edges, a few specks. Seeded, so each print's wear is its own and the same
+ * on every visit. All of it is faint: it should register as "not brand new", not as damage.
+ */
+function drawWear(ctx: CanvasRenderingContext2D, w: number, h: number, mm: number, rand: () => number) {
+	// Corners: a soft grey rub, each corner a different strength.
+	for (const [cx, cy] of [
+		[0, 0],
+		[w, 0],
+		[0, h],
+		[w, h],
+	]) {
+		const radius = (4 + rand() * 5) * mm;
+		const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+		g.addColorStop(0, `rgba(70, 60, 50, ${0.1 + rand() * 0.14})`);
+		g.addColorStop(1, 'rgba(70, 60, 50, 0)');
+		ctx.fillStyle = g;
+		ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+	}
+
+	// Edges: short scuffs that run along an edge, a hair in from it.
+	ctx.lineCap = 'round';
+	for (let i = 0; i < 10; i++) {
+		const edge = Math.floor(rand() * 4);
+		const along = rand();
+		const length = (3 + rand() * 10) * mm;
+		const inset = (0.3 + rand() * 0.9) * mm;
+		ctx.strokeStyle = `rgba(60, 52, 44, ${0.05 + rand() * 0.08})`;
+		ctx.lineWidth = (0.3 + rand() * 0.5) * mm;
+		ctx.beginPath();
+		if (edge < 2) {
+			const y = edge === 0 ? inset : h - inset;
+			const x = along * (w - length);
+			ctx.moveTo(x, y);
+			ctx.lineTo(x + length, y);
+		} else {
+			const x = edge === 2 ? inset : w - inset;
+			const y = along * (h - length);
+			ctx.moveTo(x, y);
+			ctx.lineTo(x, y + length);
+		}
+		ctx.stroke();
+	}
+
+	// A few specks on the border.
+	for (let i = 0; i < 6; i++) {
+		ctx.fillStyle = `rgba(60, 52, 44, ${0.08 + rand() * 0.1})`;
+		ctx.beginPath();
+		ctx.arc(rand() * w, rand() * h, (0.15 + rand() * 0.25) * mm, 0, Math.PI * 2);
+		ctx.fill();
+	}
 }
 
 /** The back: plain cream card stock with a faint fibre texture. The trip card sits on it. */
@@ -118,6 +173,7 @@ export function createPolaroidBack(width: number): CanvasTexture {
 		ctx.fillStyle = rand() < 0.5 ? 'rgba(120, 95, 60, 0.05)' : 'rgba(255, 255, 255, 0.08)';
 		ctx.fillRect(rand() * canvas.width, rand() * canvas.height, (1 + rand() * 3) * mm * 0.3, mm * 0.25);
 	}
+	drawWear(ctx, canvas.width, canvas.height, mm, rand);
 	return toTexture(canvas);
 }
 
@@ -167,7 +223,7 @@ function toTexture(canvas: HTMLCanvasElement) {
 }
 
 /** A random-number generator seeded from a string (FNV-1a hash into mulberry32). */
-function seededRandom(seed: string) {
+export function seededRandom(seed: string) {
 	let h = 2166136261;
 	for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
 	let a = h >>> 0;

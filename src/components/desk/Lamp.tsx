@@ -93,16 +93,18 @@ export function Lamp({ shadowMapSize }: LampProps) {
 					<meshStandardMaterial
 						color={PALETTE.lampPaint}
 						emissive={PALETTE.lamp}
-						emissiveIntensity={0.9}
+						// Above 1: brighter than white before tone mapping, so the bloom picks it up.
+						emissiveIntensity={2.5}
 						side={BackSide}
 					/>
 				</mesh>
 			</group>
 
-			{/* The bulb: unlit and exempt from tone mapping, so it reads as a glowing source. */}
+			{/* The bulb: unlit, and several times brighter than white. Tone mapping rolls that off
+			    to a warm white, and the bloom effect gives it the halo a camera would record. */}
 			<mesh position={BULB}>
 				<sphereGeometry args={[0.018, 24, 16]} />
-				<meshBasicMaterial color={PALETTE.bulb} toneMapped={false} />
+				<meshBasicMaterial color={[8, 6.6, 4.8]} />
 			</mesh>
 		</group>
 	);

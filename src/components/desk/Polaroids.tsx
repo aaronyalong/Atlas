@@ -1,13 +1,24 @@
-import { Html, useCursor } from '@react-three/drei';
+import { Html, useCursor, useTexture } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
-import { ImageLoader, MathUtils, type Group, type Texture } from 'three';
+import { BoxGeometry, ImageLoader, MathUtils, type Group, type Texture } from 'three';
+
+/**
+ * ambientCG "Paper001" (CC0), 512px WebP; see /credits. Only the data maps: the colour comes
+ * from the canvas-drawn print. The normal map gives the border its fibre texture under the lamp,
+ * the roughness map keeps the sheen uneven the way coated paper is.
+ */
+const PAPER = {
+	normalMap: '/textures/paper-normal.webp',
+	roughnessMap: '/textures/paper-roughness.webp',
+};
 import { presentedPosition, type PlacedPolaroid } from './layout';
 import {
 	createPolaroidBack,
 	createPolaroidFront,
 	loadCaptionFont,
 	POLAROID_SIZE,
+	seededRandom,
 } from './polaroidTexture';
 import type { DeskTrip } from './types';
 
@@ -24,6 +35,28 @@ const EASE = 7;
  */
 const CARD_WIDTH_PX = 440;
 const CARD_DISTANCE_FACTOR = (400 * W) / CARD_WIDTH_PX;
+
+/**
+ * The print's shape: a box, subdivided so it can bend. A real instant print never lies quite
+ * flat; it curls a few millimetres along its length, and the lamp catches that curve. The bend
+ * lifts the edges (and so the corners) off the desk, leaving the middle touching. How much, and
+ * how much across as well, varies per print from its seed.
+ */
+function createCurledGeometry(seed: string): BoxGeometry {
+	const rand = seededRandom(`${seed}:curl`);
+	const curlAlong = 0.0015 + rand() * 0.002; // metres of lift at the top and bottom edges
+	const curlAcross = rand() * 0.0008; // at the sides
+	const geometry = new BoxGeometry(W, H, T, 12, 14, 1);
+	const position = geometry.attributes.position;
+	for (let i = 0; i < position.count; i++) {
+		const nx = position.getX(i) / (W / 2);
+		const ny = position.getY(i) / (H / 2);
+		// +z is the front face, which faces up once the print lies on the desk.
+		position.setZ(i, position.getZ(i) + curlAlong * ny * ny + curlAcross * nx * nx);
+	}
+	geometry.computeVertexNormals();
+	return geometry;
+}
 
 interface PolaroidsProps {
 	placed: PlacedPolaroid[];
@@ -45,12 +78,13 @@ interface PolaroidsProps {
 export function Polaroids({ placed, selected, ...rest }: PolaroidsProps) {
 	use(loadCaptionFont(placed.map((p) => p.trip.caption).join('')));
 
-	// One back texture, shared by every polaroid.
+	// One back texture and one set of paper maps, shared by every polaroid.
 	const back = useMemo(() => createPolaroidBack(rest.textureWidth), [rest.textureWidth]);
 	useEffect(() => () => back.dispose(), [back]);
+	const paper = useTexture(PAPER);
 
 	return placed.map((p) => {
-		const props = { placed: p, back, selected: selected === p.trip.slug, anySelected: selected !== null, ...rest };
+		const props = { placed: p, back, paper, selected: selected === p.trip.slug, anySelected: selected !== null, ...rest };
 		return p.trip.photo ? <PhotoPolaroid key={p.trip.slug} {...props} /> : <Polaroid key={p.trip.slug} {...props} image={null} />;
 	});
 }
@@ -58,6 +92,7 @@ export function Polaroids({ placed, selected, ...rest }: PolaroidsProps) {
 type PolaroidProps = Omit<PolaroidsProps, 'placed' | 'selected'> & {
 	placed: PlacedPolaroid;
 	back: Texture;
+	paper: { normalMap: Texture; roughnessMap: Texture };
 	selected: boolean;
 	anySelected: boolean;
 };
@@ -90,6 +125,7 @@ function Polaroid({
 	placed,
 	image,
 	back,
+	paper,
 	selected,
 	anySelected,
 	onSelect,
@@ -106,6 +142,9 @@ function Polaroid({
 		return texture;
 	}, [textureWidth, image, trip.caption, trip.slug, gl]);
 	useEffect(() => () => front.dispose(), [front]);
+
+	const geometry = useMemo(() => createCurledGeometry(trip.slug), [trip.slug]);
+	useEffect(() => () => geometry.dispose(), [geometry]);
 
 	const mover = useRef<Group>(null);
 	const turner = useRef<Group>(null);
@@ -167,17 +206,42 @@ function Polaroid({
 	return (
 		<group ref={mover} position={rest}>
 			<group ref={turner} rotation={[-Math.PI / 2, 0, turn]}>
-				<mesh castShadow receiveShadow onPointerOver={onPointerOver} onPointerOut={() => setHovered(false)} onClick={onClick}>
-					<boxGeometry args={[W, H, T]} />
+				<mesh
+					geometry={geometry}
+					castShadow
+					receiveShadow
+					onPointerOver={onPointerOver}
+					onPointerOut={() => setHovered(false)}
+					onClick={onClick}
+				>
 					{/* A box has six faces, each with its own material slot:
 					    0–3 the edges, 4 the front (+z), 5 the back (−z). */}
 					{[0, 1, 2, 3].map((i) => (
 						<meshStandardMaterial key={i} attach={`material-${i}`} color="#eeeae0" roughness={0.8} />
 					))}
-					<meshStandardMaterial attach="material-4" map={front} roughness={0.42} />
+					<meshStandardMaterial
+						attach="material-4"
+						map={front}
+						normalMap={paper.normalMap}
+						normalScale={[0.25, 0.25]}
+						roughnessMap={paper.roughnessMap}
+						// Coated but not glossy: lower and the lamp's reflection in the border breaks
+						// into bright speckles (the normal map is finer than the pixels).
+						roughness={0.75}
+					/>
 					{/* The back faces away from the lamp once flipped; a faint glow of its own keeps
 					    it from going muddy. */}
-					<meshStandardMaterial attach="material-5" map={back} roughness={0.9} emissive="#ffffff" emissiveMap={back} emissiveIntensity={0.15} />
+					<meshStandardMaterial
+						attach="material-5"
+						map={back}
+						normalMap={paper.normalMap}
+						normalScale={[0.5, 0.5]}
+						roughnessMap={paper.roughnessMap}
+						roughness={1}
+						emissive="#ffffff"
+						emissiveMap={back}
+						emissiveIntensity={0.15}
+					/>
 				</mesh>
 				{cardOpen && <TripCard trip={trip} onClose={onClose} />}
 			</group>

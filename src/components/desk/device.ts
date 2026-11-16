@@ -1,6 +1,6 @@
 /**
  * What this device can afford, decided once at startup. Phones get a lower pixel ratio and
- * smaller shadow and texture maps: on a 3x phone screen, rendering at full resolution means
+ * smaller shadow maps and generated textures: on a 3x phone screen, rendering at full resolution means
  * 9x the pixels per frame for a difference nobody can see.
  */
 export interface DeviceProfile {
@@ -10,8 +10,6 @@ export interface DeviceProfile {
 	dpr: [number, number];
 	/** Size (px) of the lamp's shadow map. Bigger = sharper shadow edges, more GPU memory. */
 	shadowMapSize: number;
-	/** Width (px) of textures generated in code, like the desk's wood grain. */
-	textureSize: number;
 	/** Width (px) of each polaroid's front and back textures. */
 	polaroidTextureWidth: number;
 	/** The visitor asked their OS for less motion: camera moves snap instead of gliding. */
@@ -25,7 +23,6 @@ export function getDeviceProfile(): DeviceProfile {
 		isMobile,
 		dpr: isMobile ? [1, 1.5] : [1, 2],
 		shadowMapSize: isMobile ? 1024 : 2048,
-		textureSize: isMobile ? 1024 : 2048,
 		polaroidTextureWidth: isMobile ? 448 : 640,
 		reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 	};
