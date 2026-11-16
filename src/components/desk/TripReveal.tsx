@@ -211,7 +211,7 @@ function Print({ seed, caption, textureWidth, image = null, blank = false, onCli
 			{[0, 1, 2, 3, 5].map((i) => (
 				<meshStandardMaterial key={i} attach={`material-${i}`} color="#eeeae0" roughness={0.85} />
 			))}
-			{/* Held up to the camera, a print faces away from the lamp behind it; a faint glow of its
+			{/* Held up to the camera, a print faces away from the lights behind it; a faint glow of its
 			    own (the print as its own emissive map) keeps the photo readable. */}
 			{front ? (
 				<meshStandardMaterial attach="material-4" map={front} emissive="#ffffff" emissiveMap={front} emissiveIntensity={0.45} roughness={0.6} />

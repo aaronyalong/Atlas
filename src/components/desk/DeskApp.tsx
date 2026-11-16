@@ -129,7 +129,7 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 
 			<div className="desk-hud">
 				<p className="desk-hint">
-					{profile.isMobile ? 'Tap a place on the map · drag to look' : 'Click a place on the map · drag to look around · scroll to zoom'}
+					{profile.isMobile ? 'Tap a place on the map · drag to look · pinch to zoom' : 'Click a place on the map · drag to look around · scroll to zoom · right-drag to move'}
 				</p>
 				<button type="button" className="desk-pill" onClick={resetView}>
 					<ResetIcon />

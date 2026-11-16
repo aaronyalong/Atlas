@@ -150,7 +150,7 @@
 	place-content: center;
 	justify-items: center;
 	gap: var(--space-4);
-	/* A warm glow where the lamp will be, fading to the scene's dark. */
+	/* A warm glow where the ceiling light will be, fading to the scene's dark. */
 	background: radial-gradient(circle at 50% 45%, #2a1d14, var(--scene-bg) 70%);
 	transition:
 		opacity 0.6s ease,

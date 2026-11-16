@@ -40,7 +40,7 @@ import { seededRandom } from './polaroidTexture';
  */
 
 /** Earth's centre and radius, and the sun's direction (from Earth toward the sun). */
-export const EARTH = { center: [-4.5, -19.8, -26] as Vector3Tuple, radius: 13 };
+export const EARTH = { center: [-2, -24, -26] as Vector3Tuple, radius: 13 };
 /** From the left and a little behind Earth: the near side is split by the terminator, so the
  * sunlit half shows its oceans and clouds and the night half its city lights. */
 const SUN = new Vector3(-0.82, 0.3, -0.3).normalize();
@@ -323,10 +323,10 @@ function alongEarth(a: Vector3, b: Vector3, t: number, out: Vector3, height = 1.
  * racing across the planet just inside its limb, a fading trail behind. Under a second.
  */
 function ShootingStar({ slow, onDone }: { slow: number; onDone: () => void }) {
-	// From the upper left of the planet's visible face to the upper right, inside the viewport in
-	// the starting view and clear of the lamp's shade.
-	const start = useMemo(() => new Vector3(-0.317, 0.93, 0.183).normalize(), []);
-	const end = useMemo(() => new Vector3(0.253, 0.956, 0.146).normalize(), []);
+	// From the upper left of the planet's visible face to the right, just inside the limb, across
+	// the middle of the viewport in the starting view.
+	const start = useMemo(() => new Vector3(-0.269, 0.96, 0.08).normalize(), []);
+	const end = useMemo(() => new Vector3(0.383, 0.919, 0.092).normalize(), []);
 	const DURATION = 0.9 * slow;
 	const TRAIL = 0.35; // trail length as a fraction of the path
 	const t = useRef(0);
@@ -373,7 +373,7 @@ function ShootingStar({ slow, onDone }: { slow: number; onDone: () => void }) {
 	);
 }
 
-/** Simple sunlit shading for things outside: they're lit by the sun, not the room's lamps. */
+/** Simple sunlit shading for things outside: they're lit by the sun, not the room's lights. */
 const SUNLIT_VERTEX = EARTH_VERTEX;
 const SUNLIT_FRAGMENT = /* glsl */ `
 uniform vec3 uColour;
@@ -404,9 +404,10 @@ function Meteor({ slow, onDone }: { slow: number; onDone: () => void }) {
 	const rock = useRef<Mesh>(null);
 	const t = useRef(0);
 	const DURATION = 5.5 * slow;
-	// Positions chosen to cross the viewport in the starting view (above Earth's limb).
-	const start = new Vector3(-4.6, -1.1, -6.5);
-	const end = new Vector3(1.0, -1.45, -6.2);
+	// Left to right across the top of the viewport in the starting view, from behind one side of
+	// the wall to behind the other, well above Earth's limb.
+	const start = new Vector3(-4.07, -0.77, -4.97);
+	const end = new Vector3(3.96, -0.88, -4.63);
 
 	const geometry = useMemo(() => {
 		const g = new IcosahedronGeometry(0.24, 3);
@@ -457,9 +458,10 @@ function Rocket({ slow, onDone }: { slow: number; onDone: () => void }) {
 	const trail = useRef<Points>(null);
 	const t = useRef(0);
 	const DURATION = 8 * slow;
-	// Right to left across the viewport in the starting view, climbing a little.
-	const start = useMemo(() => new Vector3(1.4, -2.15, -9), []);
-	const end = useMemo(() => new Vector3(-6.2, -1.6, -9), []);
+	// Right to left across the viewport in the starting view, climbing away from the limb: in
+	// from behind the right of the wall, out behind the left.
+	const start = useMemo(() => new Vector3(5.61, -2.53, -7.01), []);
+	const end = useMemo(() => new Vector3(-5.56, -2.05, -7.27), []);
 	const direction = useMemo(() => end.clone().sub(start).normalize(), [start, end]);
 
 	// Exhaust: a ring buffer of particles left behind the engine, each with a birth time.

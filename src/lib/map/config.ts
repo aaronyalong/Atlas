@@ -34,14 +34,14 @@ export interface MapConfig {
 /**
  * The whole world, Pacific-centred: the US and East Asia sit either side of the middle, Europe and
  * Africa at the edges. Antarctica and the far Arctic are cut (nobody pins them, and they'd take a
- * fifth of the sheet). A 1.4 m sheet: 70% of the desk's width, about half its area.
+ * fifth of the sheet). A 1.8 m sheet: the whole width of the desk you see in the starting view.
  */
 export const PACIFIC: MapConfig = {
 	name: 'world-pacific',
 	rotation: [-170, 0],
 	crop: { lng: [-179.9, 179.9], lat: [-56, 78] },
 	margins: { side: 0.035, top: 0.15, bottom: 0.1 },
-	sheetWidth: 1.4,
+	sheetWidth: 3,
 	textureWidth: 4096,
 };
 

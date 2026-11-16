@@ -21,14 +21,14 @@ interface EffectsProps {
  * at the end puts AgX back.
  *
  *   - N8AO (ambient occlusion): darkens creases and the places where objects meet, from every
- *     direction, which the lamp's single hard shadow can't do. Desktop only: it reads depth and
+ *     direction, which a single light's shadow can't do. Desktop only: it reads depth and
  *     normals many times per pixel.
  *   - Depth of field: blurs what's further from the focus point than a real lens would keep
  *     sharp. Gentle at the desk (Earth outside should still read), stronger while a place is
  *     open. Focus follows the opened place. Desktop only (it blurs the frame several times).
  *   - Bloom: the glow a camera sensor records around a bare bulb. The threshold is well above
  *     1, so only the bulb and the inside of the shade (drawn far brighter than white) bloom.
- *   - Vignette: slight darkening toward the corners, which pulls the eye to the lamp pool.
+ *   - Vignette: slight darkening toward the corners, which pulls the eye to the map.
  *   - Noise: light film grain. It also hides the banding that smooth dark gradients show on
  *     8-bit screens.
  */
@@ -42,8 +42,9 @@ export function Effects({ profile, focus, target }: EffectsProps) {
 			) : (
 				<DepthOfField target={focus ?? target} worldFocusRange={focus ? 0.5 : 1.4} bokehScale={focus ? 3 : 1.4} />
 			)}
-			{/* Threshold well above 1: the bulb (8) and the shade's inside (~2.5) bloom; a lamp
-			    highlight on glossy paper (just over 1) must not, or prints start to sparkle. */}
+			{/* Threshold well above 1: only things drawn far brighter than white bloom (the ceiling
+			    light's fitting, the rocket's flame, a shooting star); a highlight on glossy paper
+			    (just over 1) must not, or prints start to sparkle. */}
 			<Bloom luminanceThreshold={1.8} luminanceSmoothing={0.4} intensity={0.7} mipmapBlur radius={0.6} />
 			<Vignette offset={0.25} darkness={0.65} />
 			<Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={profile.reducedMotion ? 0 : 0.18} />

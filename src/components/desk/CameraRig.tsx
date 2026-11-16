@@ -1,9 +1,8 @@
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useRef, type RefObject } from 'react';
-import type { PerspectiveCamera } from 'three';
-import type { Vector3Tuple } from 'three';
-import { establishingShot, FOCUS_POLAR, ORBIT_LIMITS, type Framing } from './camera';
+import { Box3, MathUtils, Plane, Raycaster, Vector2, Vector3, type PerspectiveCamera, type Vector3Tuple } from 'three';
+import { establishingShot, FOCUS_POLAR, ORBIT_LIMITS, TARGET_BOUNDS, type Framing } from './camera';
 
 const { ACTION } = CameraControlsImpl;
 
@@ -24,9 +23,17 @@ interface CameraRigProps {
 	ready: boolean;
 }
 
+const DESK_PLANE = new Plane(new Vector3(0, 1, 0), 0);
+const BOUNDS = new Box3(new Vector3(...TARGET_BOUNDS.min), new Vector3(...TARGET_BOUNDS.max));
+
 /**
- * The limited orbit: drag to rotate around the desk, scroll or pinch to zoom, all inside
- * ORBIT_LIMITS. Panning is switched off, so the desk always stays in the middle.
+ * The limited orbit: drag to rotate around the desk, scroll or pinch to zoom, right-drag or two
+ * fingers to slide across the map, all inside ORBIT_LIMITS and TARGET_BOUNDS.
+ *
+ * Scrolling zooms toward whatever is under the pointer, the way a map app does: the point of the
+ * desk under the cursor stays under the cursor while everything else grows around it. (The
+ * library's own dolly-to-cursor moves the orbit point off the desk, up toward the window, so
+ * this does it by hand: see zoomAt.)
  *
  * Why CameraControls (drei's wrapper of the camera-controls library) rather than OrbitControls:
  * it can animate the camera to any position and target with one call (`setLookAt(..., true)`)
@@ -41,15 +48,18 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 		const controls = controlsRef.current;
 		if (!controls) return;
 
-		// Gestures: one finger / left drag rotates, two fingers pinch-zoom, wheel zooms. Right drag
-		// and two-finger drag would pan; both are off.
+		// Gestures: one finger / left drag rotates; right drag and two fingers slide along the desk
+		// (SCREEN_PAN: sideways and forward/back, never up off it); two fingers also pinch-zoom.
+		// The wheel is handled below (zoom toward the cursor).
 		controls.mouseButtons.left = ACTION.ROTATE;
 		controls.mouseButtons.middle = ACTION.DOLLY;
-		controls.mouseButtons.right = ACTION.NONE;
-		controls.mouseButtons.wheel = ACTION.DOLLY;
+		controls.mouseButtons.right = ACTION.SCREEN_PAN;
+		controls.mouseButtons.wheel = ACTION.NONE;
 		controls.touches.one = ACTION.TOUCH_ROTATE;
-		controls.touches.two = ACTION.TOUCH_DOLLY;
+		// (camera-controls handles TOUCH_DOLLY_SCREEN_PAN but leaves it out of its own type.)
+		controls.touches.two = ACTION.TOUCH_DOLLY_SCREEN_PAN as unknown as typeof ACTION.TOUCH_DOLLY_TRUCK;
 		controls.touches.three = ACTION.NONE;
+		controls.setBoundary(BOUNDS);
 
 		// The lens for this framing (it changes when a phone is turned).
 		camera.fov = framing.fov;
@@ -109,6 +119,39 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 		hadFocus.current = focus !== null;
 	}, [controlsRef, framing, focus]);
 
+	// Scroll to zoom toward the cursor.
+	const gl = useThree((state) => state.gl);
+	useEffect(() => {
+		const element = gl.domElement;
+		const raycaster = new Raycaster();
+		const pointer = new Vector2();
+		const hit = new Vector3();
+		const position = new Vector3();
+		const target = new Vector3();
+		const onWheel = (event: WheelEvent) => {
+			const controls = controlsRef.current;
+			if (!controls || !controls.enabled) return;
+			event.preventDefault();
+			// Lines and pages (some mice, Firefox) → roughly pixels.
+			const pixels = event.deltaY * (event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 400 : 1);
+			const rect = element.getBoundingClientRect();
+			pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+			raycaster.setFromCamera(pointer, camera);
+			controls.getPosition(position, true);
+			controls.getTarget(target, true);
+			const distance = position.distanceTo(target);
+			const wanted = distance * Math.exp(MathUtils.clamp(pixels, -120, 120) * 0.0018);
+			const scale = MathUtils.clamp(wanted, controls.minDistance, controls.maxDistance) / distance;
+			// The point under the cursor: on the desk, or (pointing up at the window) just the
+			// orbit point, which makes it an ordinary zoom.
+			const anchor = raycaster.ray.intersectPlane(DESK_PLANE, hit) && BOUNDS.containsPoint(hit.setY(0)) ? hit : target;
+			zoomAt(position, target, anchor, scale);
+			controls.setLookAt(position.x, position.y, position.z, target.x, target.y, target.z, true);
+		};
+		element.addEventListener('wheel', onWheel, { passive: false });
+		return () => element.removeEventListener('wheel', onWheel);
+	}, [gl, camera, controlsRef]);
+
 	return (
 		<CameraControls
 			ref={controlsRef}
@@ -122,4 +165,19 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 			draggingSmoothTime={reducedMotion ? 0 : 0.12}
 		/>
 	);
+}
+
+/**
+ * Scales the camera's position and its orbit point toward `anchor` (both in place). Everything on
+ * the ray from the camera through the anchor stays on it, so the anchor stays under the cursor,
+ * the view direction (and so the orbit angles) doesn't change, and an orbit point on the desk
+ * stays on the desk. The orbit point is then kept over the map, moving the camera with it.
+ */
+function zoomAt(position: Vector3, target: Vector3, anchor: Vector3, scale: number) {
+	const a = anchor.clone();
+	position.sub(a).multiplyScalar(scale).add(a);
+	target.sub(a).multiplyScalar(scale).add(a);
+	const shift = BOUNDS.clampPoint(target, new Vector3()).sub(target);
+	position.add(shift);
+	target.add(shift);
 }

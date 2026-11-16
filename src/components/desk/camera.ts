@@ -10,11 +10,10 @@
  */
 const deg = (d: number) => (d * Math.PI) / 180;
 
-
 /** The orbit limits (the rotation part of "limited orbit"). */
 export const ORBIT_LIMITS = {
-	/** Never straight overhead... */
-	minPolarAngle: deg(25),
+	/** Never straight overhead (and, zoomed right out, never up through the ceiling)... */
+	minPolarAngle: deg(35),
 	/** ...and never down at desk level. */
 	maxPolarAngle: deg(70),
 	/** 45° either side of the front: a 90° arc in total. */
@@ -42,6 +41,13 @@ export interface Framing {
 	maxDistance: number;
 }
 
+/**
+ * Where the point the camera orbits may be slid to (right-drag or two fingers, and zooming in
+ * toward the cursor): over the map, never off it. Kept narrow enough that, zoomed out and swung
+ * round, the camera stays inside the room.
+ */
+export const TARGET_BOUNDS = { min: [-1.3, -0.01, -0.75] as const, max: [1.3, 0.7, 0.8] as const };
+
 /** An opened place is viewed from the front, looking down at 45° (its photos tip up to match). */
 export const FOCUS_POLAR = deg(45);
 
@@ -50,19 +56,21 @@ export const FOCUS_POLAR = deg(45);
  *
  * The lens is deliberately narrow (35°, like a 60 mm lens on a full-frame camera): a wide lens
  * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
- * game". On a wide screen the camera looks across the desk at 62°, far enough back that the whole
- * map, the lamp and both props fit, with the viewport (and Earth) across the top of the frame. A tall phone screen can't show a 1.4 m map
- * across at a readable size, so it frames the stretch the trips cover (East Asia to the US, near
- * the middle of the Pacific-centred map) and lets the rest run off the sides: drag or zoom out
- * to see it all.
+ * game". On a wide screen the camera looks down across the desk at 52°; the 3 m map runs edge to
+ * edge (a little past the sides on a 16:10 screen) and down to just above the bottom, with the
+ * lamp behind its back-left corner and the viewport (and Earth) across the top. Zooming out
+ * shows the whole sheet. A tall phone screen can't
+ * show the map across at a readable size, so it frames the stretch the trips cover (East Asia to
+ * the US, near the middle of the Pacific-centred map) and lets the rest run off the sides: drag
+ * or zoom out to see it all.
  */
 export function framingFor(aspect: number): Framing {
 	const portrait = aspect < 1;
 	const fov = portrait ? 48 : 35;
-	const polar = portrait ? deg(48) : deg(62);
-	const distance = portrait ? 1.75 : 2.3;
+	const polar = deg(52);
+	const distance = portrait ? 3.6 : 3.5;
 	const azimuth = 0;
-	const target: [number, number, number] = portrait ? [0.09, 0, -0.06] : [0, 0, -0.22];
+	const target: [number, number, number] = portrait ? [0.2, 0, -0.38] : [0, 0, -0.3];
 	const [tx, ty, tz] = target;
 	// Spherical → x/y/z: the polar angle tilts down from straight up, the azimuth swings around
 	// the vertical axis from the front (+z).
@@ -79,21 +87,22 @@ export function framingFor(aspect: number): Framing {
 			ty + Math.cos(polar) * distance,
 			tz + Math.cos(azimuth) * horizontal,
 		],
-		// Close enough to read the map's coastlines; not so far the desk is lost in the room.
-		minDistance: portrait ? 0.8 : 0.55,
-		maxDistance: portrait ? 4 : distance * 1.25,
+		// Close enough to read the map's coastlines; not so far the desk is lost in the room (or,
+		// at the steepest angle, the camera goes up through the ceiling: see Room.tsx).
+		minDistance: portrait ? 0.7 : 0.45,
+		maxDistance: distance * 1.25,
 	};
 }
 
 /**
  * The opening shot, before the camera cranes down to the starting view: low across the desk and
- * out through the viewport at Earth, from a little to the right.
+ * straight out through the viewport at Earth, from a little to the right.
  */
 export function establishingShot(framing: Framing): { position: [number, number, number]; target: [number, number, number] } {
 	const polar = ORBIT_LIMITS.maxPolarAngle - deg(1);
-	const azimuth = framing.portrait ? deg(14) : deg(12);
+	const azimuth = framing.portrait ? deg(10) : deg(8);
 	const distance = framing.portrait ? 2.6 : 2.4;
-	const target: [number, number, number] = [-0.55, 0.2, -0.6];
+	const target: [number, number, number] = [0, 0.3, -0.6];
 	const horizontal = Math.sin(polar) * distance;
 	return {
 		position: [target[0] + Math.sin(azimuth) * horizontal, target[1] + Math.cos(polar) * distance, target[2] + Math.cos(azimuth) * horizontal],

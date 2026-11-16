@@ -8,14 +8,10 @@ export interface DeviceProfile {
 	isMobile: boolean;
 	/** [min, max] device-pixel ratio. R3F renders at the screen's ratio, clamped to this range. */
 	dpr: [number, number];
-	/** Size (px) of the lamp's shadow map. Bigger = sharper shadow edges, more GPU memory. */
+	/** Size (px) of the ceiling light's shadow map. Bigger = sharper shadow edges, more GPU memory. */
 	shadowMapSize: number;
-	/** Width (px) of the textures drawn for prints and the journal's page. */
+	/** Width (px) of the textures drawn for photo prints. */
 	printTextureWidth: number;
-	/** Books on the shelf (one instanced draw either way, but fewer to shade). */
-	bookCount: number;
-	/** Dust motes in the lamplight. */
-	dustCount: number;
 	/** The light through the viewport casts shadows (a second shadow map): desktop only. */
 	moonShadows: boolean;
 	/** Earth's texture maps: sharper on desktop, lighter on phones. */
@@ -32,8 +28,6 @@ export function getDeviceProfile(): DeviceProfile {
 		dpr: isMobile ? [1, 1.5] : [1, 2],
 		shadowMapSize: isMobile ? 1024 : 2048,
 		printTextureWidth: isMobile ? 448 : 640,
-		bookCount: isMobile ? 140 : 240,
-		dustCount: isMobile ? 50 : 140,
 		moonShadows: !isMobile,
 		earthTextures: isMobile
 			? { day: '/space/earth-day-2k.webp', night: '/space/earth-night-2k.webp', clouds: '/space/earth-clouds-1k.webp' }

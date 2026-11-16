@@ -33,13 +33,14 @@ interface PinsProps {
 }
 
 export function Pins({ trips, map, hovered, selected, onHover, onSelect, reducedMotion }: PinsProps) {
-	// Labels go above their pin, unless other places are close by. Then the label moves away
+	// Labels go above their pin, unless other places are close by (within a fifteenth of the map's
+	// width, about a label's length at the starting view). Then the label moves away
 	// from them: to the left if the neighbours are east, to the right if they're west, below if
 	// they're on both sides (Portland, Zion and Dallas form such a cluster).
 	const placed = useMemo(() => {
 		const list = trips.filter((t) => t.map).map((trip) => ({ trip, position: mapToDesk(map, trip.map!) }));
 		return list.map((p) => {
-			const near = list.filter((q) => q !== p && Math.hypot(q.position[0] - p.position[0], q.position[2] - p.position[2]) < 0.12);
+			const near = list.filter((q) => q !== p && Math.hypot(q.position[0] - p.position[0], q.position[2] - p.position[2]) < map.width / 15);
 			const east = near.some((q) => q.position[0] > p.position[0]);
 			const west = near.some((q) => q.position[0] < p.position[0]);
 			const side: LabelSide = east && west ? 'below' : east ? 'left' : west ? 'right' : 'above';

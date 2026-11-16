@@ -15,7 +15,7 @@
 	--color-accent-hover: #1f45ad;
 
 	/* The dark palette, declared once: dark mode uses it for the page, and .on-dark for blocks
-	   that are dark in both themes (here: the whole 3D desk page, lit by its lamp at night). */
+	   that are dark in both themes (here: the whole 3D desk page, in orbit). */
 	--dark-bg: #121214;
 	--dark-surface: #1a1a1d;
 	--dark-text: #ececef;

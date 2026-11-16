@@ -5,8 +5,9 @@ import { PlaneGeometry, SRGBColorSpace } from 'three';
 import { PAPER } from './paper';
 import type { DeskMap } from './types';
 
-/** Where the sheet lies: the middle of the desk, a hair above it, set square to the desk. */
-export const MAP_POSITION: [number, number, number] = [0, 0.0008, 0];
+/** Where the sheet lies: across the desk, a hair above it, its back edge 30 cm short of the wall
+ * (room for the lamp behind its left end). */
+export const MAP_POSITION: [number, number, number] = [0, 0.0008, 0.131];
 
 /*
  * The sheet was folded to carry: in four across and once down. Unfolded on the desk, the creases
@@ -46,7 +47,7 @@ interface WorldMapProps {
  * The map: a large printed sheet lying across the middle of the desk, with its fold creases.
  *
  * A finely subdivided plane, displaced by mapSurfaceHeight, so the creases are real geometry and
- * catch the lamp and the moonlight at an angle. The print is the texture drawn by
+ * catch the ceiling light and the sunlight at an angle. The print is the texture drawn by
  * scripts/map.mjs; the paper's fibre and matte sheen come from the Paper001 texture maps.
  *
  * It answers the pointer: moving over it highlights the nearest place, a click opens it (the

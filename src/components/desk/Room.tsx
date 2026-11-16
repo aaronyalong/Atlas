@@ -1,39 +1,45 @@
 import { RoundedBox, useTexture } from '@react-three/drei';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import {
-	CanvasTexture,
-	Color,
-	type InstancedMesh,
-	Matrix4,
-	Object3D,
-	Quaternion,
-	RepeatWrapping,
-	SRGBColorSpace,
-	type Texture,
-	Vector3,
-} from 'three';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Object3D, Quaternion, RepeatWrapping, SRGBColorSpace, Vector3, type InstancedMesh, type Texture, type Vector3Tuple } from 'three';
 import { PALETTE } from './palette';
-import { seededRandom } from './polaroidTexture';
-import { BOOK_COLOURS, drawTerminal } from './roomTextures';
 import { SpaceView, type EarthTextures } from './SpaceView';
+import { SunBeam, type BeamWindow } from './SunBeam';
 
 /*
- * The room around the desk: a dark studio on a station in orbit. Charcoal walls; a broad viewport
- * onto space, with Earth below (SpaceView.tsx); matte-black steel shelving with dark oak boards,
- * warm LED strips under each shelf, dark hardcovers, and a monitor running a terminal with Tux
- * keeping it company; a dark floor. Sunlight comes in through the viewport.
+ * The room around the desk: an observation deck on a station in orbit. A closed room lined with
+ * dark graphite panels, and one broad viewport centred in the back wall, set deep in a flared
+ * recess edged with a strip of blue light, looking down at Earth (SpaceView.tsx). The desk runs
+ * wall to wall in front of it, like a console.
  *
- * Layout (metres; desk top at y = 0, +z toward the viewer): the desk's back edge is at
- * z ≈ -0.53; the wall's face is at WALL_Z, the floor at FLOOR_Y. The window is centred behind the
- * left half of the desk, the shelving stands against the wall to the right.
+ * Light: sunlight pouring in through the viewport (casting the frame's shadow across the desk),
+ * a soft light from a recessed fitting high in the ceiling, the banker's lamp on the desk
+ * (BankersLamp.tsx), and a little blue earthlight coming up from the planet below the window.
+ *
+ * Layout (metres; desk top at y = 0, +z toward the viewer): the wall's face is at WALL_Z, the
+ * floor at FLOOR_Y, the ceiling at CEILING_Y, the side walls at ±SIDE_X. The room is sized so
+ * the camera can't leave it: zoomed right out at the steepest angle it stays under the ceiling,
+ * and swung round to either side it stays inside the side walls (see camera.ts).
  */
 export const WALL_Z = -0.9;
 export const FLOOR_Y = -0.75;
-const WALL_THICKNESS = 0.12;
-const WINDOW = { left: -1.5, right: 0.22, bottom: 0.04, top: 1.45 };
-const SHELF = { left: 0.35, right: 1.55, depth: 0.3, top: 1.5 };
-/** Shelf boards (their centre heights). The one at -0.07 sits just above the desk's line. */
-const SHELVES = [-0.42, -0.07, 0.28, 0.63, 0.98, 1.33];
+export const CEILING_Y = 4.2;
+export const SIDE_X = 4.4;
+const FRONT_Z = 5.6;
+const WALL_THICKNESS = 0.26;
+/** The glass, at the back of the recess. */
+const WINDOW = { left: -1.05, right: 1.05, bottom: 0.04, top: 1.5 };
+/** The recess: how deep the glass sits behind the wall's face, and how far the sides and top
+ *  splay out toward the room. The bottom is a flat sill, level with the glass. */
+const RECESS = { depth: 0.22, flare: 0.14 };
+/** The opening in the wall's face. */
+const OPENING = { left: WINDOW.left - RECESS.flare, right: WINDOW.right + RECESS.flare, bottom: WINDOW.bottom, top: WINDOW.top + RECESS.flare };
+const GLASS_Z = WALL_Z - RECESS.depth;
+/** The viewport frame's width, and its two struts (centred a sixth of the way either side). */
+const FRAME = 0.07;
+const STRUT = 0.035;
+/** Where the sunlight comes from: high behind the wall, a little to the left. */
+const SUN_POSITION: Vector3Tuple = [-0.5, 2.6, WALL_Z - 2];
+const BEAM_WINDOW: BeamWindow = { ...WINDOW, z: GLASS_Z, frame: FRAME, struts: [1 / 3, 2 / 3], strutWidth: STRUT };
 
 const WOOD = {
 	map: '/textures/wood-color.webp',
@@ -46,30 +52,36 @@ type Wood = Record<'map' | 'normalMap' | 'roughnessMap', Texture>;
 interface RoomProps {
 	/** Phones skip the sunlight's shadow map. */
 	shadows: boolean;
+	/** Shadow-map size for the sunlight and the ceiling light. */
+	shadowMapSize: number;
 	earthTextures: EarthTextures;
 	/** The occasional shooting star, meteor and rocket outside. */
 	skyEvents: boolean;
-	bookCount: number;
-	/** For the terminal's `ls trips/`. */
-	tripSlugs: string[];
 	reducedMotion: boolean;
+	/** Phones: no light shaft, fewer motes (see SunBeam.tsx). */
+	lite: boolean;
 }
 
-export function Room({ shadows, earthTextures, skyEvents, bookCount, tripSlugs, reducedMotion }: RoomProps) {
+export function Room({ shadows, shadowMapSize, earthTextures, skyEvents, reducedMotion, lite }: RoomProps) {
 	const wood = useTexture(WOOD);
-	// The desk uses the same wood (cached by URL); the floor and shelves need their own repeat, so
-	// they get clones that share the image.
-	const floorWood = useMemo(() => cloneWood(wood, 6, 6), [wood]);
-	const shelfWood = useMemo(() => cloneWood(wood, 1.2, 0.3), [wood]);
+	// The desk uses the same wood (cached by URL); the floor needs its own repeat, so it gets a
+	// clone that shares the image.
+	const floorWood = useMemo(() => cloneWood(wood, 9, 9), [wood]);
 
 	return (
 		<group>
-			<Floor wood={floorWood} />
-			<BackWall shadows={shadows} />
+			<Shell wood={floorWood} shadows={shadows} />
+			<Panels />
+			<Recess shadows={shadows} />
 			<Viewport />
+			<StatusPanel />
 			<SpaceView textures={earthTextures} reducedMotion={reducedMotion} events={skyEvents} />
-			<Shelving wood={shelfWood} bookCount={bookCount} tripSlugs={tripSlugs} reducedMotion={reducedMotion} />
-			<Sunlight shadows={shadows} />
+			<Sunlight shadows={shadows} shadowMapSize={shadowMapSize} />
+			<SunBeam sun={SUN_POSITION} window={BEAM_WINDOW} steps={lite ? 0 : 24} motes={lite ? 60 : 150} reducedMotion={reducedMotion} />
+			<CeilingLight shadowMapSize={shadowMapSize} />
+			<WallWashers />
+			{/* Earthlight: the planet below the window, lighting the room faintly blue from below. */}
+			<directionalLight position={[0, -1.2, WALL_Z - 3]} color="#7fa6ff" intensity={0.22} />
 		</group>
 	);
 }
@@ -87,47 +99,156 @@ function cloneWood(wood: Wood, rx: number, ry: number): Wood {
 	return out;
 }
 
-const steel = () => <meshStandardMaterial color="#101113" metalness={0.55} roughness={0.45} />;
-
-function Floor({ wood }: { wood: Wood }) {
-	return (
-		// Inside the room only (from the wall forward): it mustn't show through the viewport.
-		<mesh position={[0, FLOOR_Y, (WALL_Z + 4) / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
-			<planeGeometry args={[4 - WALL_Z, 8]} />
-			<meshStandardMaterial map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} color="#4a3c33" roughness={0.85} />
-		</mesh>
-	);
-}
-
 /**
- * The wall: four slabs around the window opening, so the moonlight's shadow map sees a real hole
- * and the window's light lands on the desk with the frame's shadows in it.
+ * The room's shell: floor, ceiling, side walls, and the back wall as four slabs around the
+ * opening (so the sunlight's shadow map sees a real hole and the light lands on the desk in the
+ * window's shape). Closed all round: the only view out is through the viewport. The walls are the
+ * dark colour of the seams; the panels (below) cover them.
  */
-function BackWall({ shadows }: { shadows: boolean }) {
+function Shell({ wood, shadows }: { wood: Wood; shadows: boolean }) {
 	const zc = WALL_Z - WALL_THICKNESS / 2;
-	const W = 7;
-	const H = 3.4;
-	const { left, right, bottom, top } = WINDOW;
-	const piece = (x0: number, x1: number, y0: number, y1: number, key: string) => (
+	const depth = FRONT_Z - WALL_Z;
+	const height = CEILING_Y - FLOOR_Y;
+	const backing = <meshStandardMaterial color={PALETTE.seam} roughness={0.9} />;
+	const { left, right, bottom, top } = OPENING;
+	const slab = (x0: number, x1: number, y0: number, y1: number, key: string) => (
 		<mesh key={key} position={[(x0 + x1) / 2, (y0 + y1) / 2, zc]} castShadow={shadows} receiveShadow>
 			<boxGeometry args={[x1 - x0, y1 - y0, WALL_THICKNESS]} />
-			<meshStandardMaterial color={PALETTE.wall} roughness={0.95} />
+			{backing}
 		</mesh>
 	);
 	return (
 		<group>
-			{piece(-W / 2, left, FLOOR_Y, FLOOR_Y + H, 'l')}
-			{piece(right, W / 2, FLOOR_Y, FLOOR_Y + H, 'r')}
-			{piece(left, right, FLOOR_Y, bottom, 'b')}
-			{piece(left, right, top, FLOOR_Y + H, 't')}
+			<mesh position={[0, FLOOR_Y, (WALL_Z + FRONT_Z) / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
+				<planeGeometry args={[depth, SIDE_X * 2]} />
+				<meshStandardMaterial map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} color="#5a5e66" roughness={0.85} />
+			</mesh>
+			<mesh position={[0, CEILING_Y, (WALL_Z + FRONT_Z) / 2]} rotation={[Math.PI / 2, 0, 0]}>
+				<planeGeometry args={[SIDE_X * 2, depth]} />
+				<meshStandardMaterial color="#17181b" roughness={0.95} />
+			</mesh>
+			{[-1, 1].map((side) => (
+				<mesh key={side} position={[side * SIDE_X, (FLOOR_Y + CEILING_Y) / 2, (WALL_Z + FRONT_Z) / 2]} rotation={[0, -side * (Math.PI / 2), 0]} receiveShadow>
+					<planeGeometry args={[depth, height]} />
+					{backing}
+				</mesh>
+			))}
+			{slab(-SIDE_X, left, FLOOR_Y, CEILING_Y, 'l')}
+			{slab(right, SIDE_X, FLOOR_Y, CEILING_Y, 'r')}
+			{slab(left, right, FLOOR_Y, bottom, 'b')}
+			{slab(left, right, top, CEILING_Y, 't')}
+		</group>
+	);
+}
+
+/** Splits [a, b] into n equal spans. */
+const spans = (a: number, b: number, n: number) => Array.from({ length: n }, (_, i) => [a + ((b - a) * i) / n, a + ((b - a) * (i + 1)) / n] as const);
+
+/**
+ * Wall panels: a grid of slightly raised graphite plates over the walls, with dark seams between
+ * them. The lamp and the ceiling light catch their edges, so the wall reads as a surface, not a
+ * void. The rows on the back wall line up with the viewport's opening. One instanced mesh (one
+ * draw call) for all of them.
+ */
+function Panels() {
+	const mesh = useRef<InstancedMesh>(null);
+	const panels = useMemo(() => {
+		const GAP = 0.014;
+		const PROUD = 0.016; // how far the plates stand off the wall
+		const out: { position: Vector3; size: Vector3Tuple; rotationY: number }[] = [];
+		const { left, right, top } = OPENING;
+		const rows = [...spans(0, top / 2, 1), ...spans(top / 2, top, 1), ...spans(top, CEILING_Y, 3)];
+		const back = (x0: number, x1: number, y0: number, y1: number) =>
+			out.push({ position: new Vector3((x0 + x1) / 2, (y0 + y1) / 2, WALL_Z + PROUD / 2), size: [x1 - x0 - GAP, y1 - y0 - GAP, PROUD], rotationY: 0 });
+		for (const [y0, y1] of rows) {
+			for (const [x0, x1] of spans(-SIDE_X, left, 5)) back(x0, x1, y0, y1);
+			for (const [x0, x1] of spans(right, SIDE_X, 5)) back(x0, x1, y0, y1);
+		}
+		for (const [y0, y1] of spans(top, CEILING_Y, 3)) for (const [x0, x1] of spans(left, right, 4)) back(x0, x1, y0, y1);
+		// Side walls, from the back wall forward past where the camera can go.
+		for (const side of [-1, 1])
+			for (const [y0, y1] of rows)
+				for (const [z0, z1] of spans(WALL_Z, FRONT_Z - 0.1, 11))
+					out.push({ position: new Vector3(side * (SIDE_X - PROUD / 2), (y0 + y1) / 2, (z0 + z1) / 2), size: [z1 - z0 - GAP, y1 - y0 - GAP, PROUD], rotationY: -side * (Math.PI / 2) });
+		return out;
+	}, []);
+
+	useLayoutEffect(() => {
+		const m = new Matrix4();
+		const q = new Quaternion();
+		const up = new Vector3(0, 1, 0);
+		panels.forEach(({ position, size, rotationY }, i) => {
+			q.setFromAxisAngle(up, rotationY);
+			mesh.current!.setMatrixAt(i, m.compose(position, q, new Vector3(...size)));
+		});
+		mesh.current!.instanceMatrix.needsUpdate = true;
+		mesh.current!.computeBoundingSphere();
+	}, [panels]);
+
+	return (
+		<instancedMesh ref={mesh} args={[undefined, undefined, panels.length]} receiveShadow>
+			<boxGeometry />
+			<meshStandardMaterial color={PALETTE.wall} metalness={0.2} roughness={0.55} />
+		</instancedMesh>
+	);
+}
+
+/** A flat quad through four corners (in order round the edge). */
+function quad(points: Vector3Tuple[]): BufferGeometry {
+	const g = new BufferGeometry();
+	g.setAttribute('position', new Float32BufferAttribute(points.flat(), 3));
+	g.setIndex([0, 1, 2, 0, 2, 3]);
+	g.computeVertexNormals();
+	return g;
+}
+
+/**
+ * The recess: the wall is thick here, and the opening splays out from the glass toward the room,
+ * so the viewport reads as a heavy port in a hull rather than a hole. A flat sill along the
+ * bottom, and a strip of light (the portfolio's blue) all the way round the opening's edge.
+ */
+function Recess({ shadows }: { shadows: boolean }) {
+	const o = OPENING;
+	const w = WINDOW;
+	const faces = useMemo(
+		() => [
+			quad([[o.left, o.bottom, WALL_Z], [o.left, o.top, WALL_Z], [w.left, w.top, GLASS_Z], [w.left, w.bottom, GLASS_Z]]),
+			quad([[o.right, o.bottom, WALL_Z], [w.right, w.bottom, GLASS_Z], [w.right, w.top, GLASS_Z], [o.right, o.top, WALL_Z]]),
+			quad([[o.left, o.top, WALL_Z], [o.right, o.top, WALL_Z], [w.right, w.top, GLASS_Z], [w.left, w.top, GLASS_Z]]),
+			quad([[o.left, o.bottom, WALL_Z], [w.left, w.bottom, GLASS_Z], [w.right, w.bottom, GLASS_Z], [o.right, o.bottom, WALL_Z]]),
+		],
+		[o, w],
+	);
+	const S = 0.008; // strip thickness
+	const z = WALL_Z - 0.006;
+	const height = o.top - o.bottom;
+	const width = o.right - o.left;
+	return (
+		<group>
+			{faces.map((geometry, i) => (
+				<mesh key={i} geometry={geometry} castShadow={shadows} receiveShadow>
+					<meshStandardMaterial color="#2a2d33" metalness={0.55} roughness={0.42} side={DoubleSide} />
+				</mesh>
+			))}
+			{/* The light strip, just inside the opening's edge. */}
+			{[
+				[o.left + S / 2, o.bottom + height / 2, S, height],
+				[o.right - S / 2, o.bottom + height / 2, S, height],
+				[0, o.top - S / 2, width, S],
+				[0, o.bottom + S / 2, width, S],
+			].map(([x, y, sw, sh], i) => (
+				<mesh key={i} position={[x, y, z]}>
+					<boxGeometry args={[sw, sh, S]} />
+					<meshBasicMaterial color={PALETTE.accentLight} toneMapped={false} />
+				</mesh>
+			))}
 		</group>
 	);
 }
 
 /**
- * The viewport: a broad pane in a thick gunmetal frame with bevelled edges, one slim strut down
- * the middle, and a row of bolts around it, like an observation window on a station. The glass is
- * barely there; the view beyond is SpaceView.
+ * The viewport: a broad pane in a thick gunmetal frame with bevelled edges, two slim struts, and
+ * rows of bolts, at the back of the recess. The glass is barely there.
  */
 function Viewport() {
 	const { left, right, bottom, top } = WINDOW;
@@ -135,12 +256,12 @@ function Viewport() {
 	const h = top - bottom;
 	const cx = (left + right) / 2;
 	const cy = (bottom + top) / 2;
-	const z = WALL_Z - 0.01;
-	const F = 0.07; // frame width
+	const z = GLASS_Z;
+	const F = FRAME;
 	const gunmetal = <meshStandardMaterial color="#1a1c20" metalness={0.75} roughness={0.38} />;
 	const bolts: [number, number][] = [];
-	for (let i = 0; i <= 10; i++) {
-		const x = left + F / 2 + (i * (w - F)) / 10;
+	for (let i = 0; i <= 12; i++) {
+		const x = left + F / 2 + (i * (w - F)) / 12;
 		bolts.push([x, bottom + F / 2], [x, top - F / 2]);
 	}
 	for (let i = 1; i < 6; i++) {
@@ -159,9 +280,11 @@ function Viewport() {
 					{gunmetal}
 				</RoundedBox>
 			))}
-			<RoundedBox args={[0.035, h - F, 0.05]} radius={0.01} smoothness={3} position={[cx + w * 0.12, cy, z - 0.005]} castShadow>
-				{gunmetal}
-			</RoundedBox>
+			{[-1, 1].map((s) => (
+				<RoundedBox key={s} args={[STRUT, h - F, 0.05]} radius={0.01} smoothness={3} position={[cx + (s * w) / 6, cy, z - 0.005]} castShadow>
+					{gunmetal}
+				</RoundedBox>
+			))}
 			{bolts.map(([x, y], i) => (
 				<mesh key={i} position={[x, y, z + 0.032]} rotation={[Math.PI / 2, 0, 0]}>
 					<cylinderGeometry args={[0.006, 0.006, 0.006, 6]} />
@@ -178,28 +301,61 @@ function Viewport() {
 }
 
 /**
- * Sunlight through the viewport: a cool white directional light from high behind the wall. It
- * casts shadows (desktop), so the wall blocks it except through the viewport, and the frame and
- * strut draw themselves across the desk.
+ * A small status plate on the wall to the right of the viewport: a dark plate with a column of
+ * indicator lights, the kind a station has beside every port. Purely decoration.
  */
-function Sunlight({ shadows }: { shadows: boolean }) {
+function StatusPanel() {
+	const x = OPENING.right + 0.26;
+	const lights: [number, [number, number, number]][] = [
+		[0.06, [0.4, 3.2, 1.0]],
+		[0.02, [0.4, 3.2, 1.0]],
+		[-0.02, [0.4, 3.2, 1.0]],
+		[-0.06, [3.4, 1.6, 0.2]],
+	];
+	return (
+		<group position={[x, 0.42, WALL_Z + 0.018]}>
+			<RoundedBox args={[0.09, 0.2, 0.012]} radius={0.004} smoothness={2} position={[0, 0, 0.006]}>
+				<meshStandardMaterial color="#111215" metalness={0.5} roughness={0.5} />
+			</RoundedBox>
+			{lights.map(([y, colour], i) => (
+				<mesh key={i} position={[-0.018, y, 0.013]}>
+					<circleGeometry args={[0.0045, 16]} />
+					<meshBasicMaterial color={colour} toneMapped={false} />
+				</mesh>
+			))}
+			{lights.map(([y], i) => (
+				<mesh key={`l${i}`} position={[0.016, y, 0.0125]}>
+					<planeGeometry args={[0.032, 0.004]} />
+					<meshBasicMaterial color="#3a3e46" />
+				</mesh>
+			))}
+		</group>
+	);
+}
+
+/**
+ * Sunlight through the viewport: a cool white light from high behind the wall. A spotlight with
+ * no fall-off rather than a directional light, so its cone stops at the window: it lights only
+ * what the window lets it, even where the shadow map doesn't reach. It casts shadows (desktop),
+ * so the frame and struts draw themselves across the desk and the map.
+ */
+function Sunlight({ shadows, shadowMapSize }: { shadows: boolean; shadowMapSize: number }) {
 	const [target] = useState(() => new Object3D());
 	return (
 		<>
-			<primitive object={target} position={[-0.25, 0, 0.05]} />
-			<directionalLight
-				position={[-0.75, 2.4, WALL_Z - 1.9]}
+			<primitive object={target} position={[0.1, 0, 0.1]} />
+			<spotLight
+				position={SUN_POSITION}
 				target={target}
-				color="#dfe6ff"
-				intensity={0.6}
+				color="#e2e8ff"
+				intensity={1.05}
+				decay={0}
+				angle={0.66}
+				penumbra={0.15}
 				castShadow={shadows}
-				shadow-mapSize={[1024, 1024]}
-				shadow-camera-left={-1.4}
-				shadow-camera-right={1.4}
-				shadow-camera-top={1.4}
-				shadow-camera-bottom={-1.4}
+				shadow-mapSize={[shadowMapSize, shadowMapSize]}
 				shadow-camera-near={0.5}
-				shadow-camera-far={6}
+				shadow-camera-far={7}
 				shadow-bias={-0.0005}
 				shadow-normalBias={0.02}
 				shadow-radius={4}
@@ -209,232 +365,54 @@ function Sunlight({ shadows }: { shadows: boolean }) {
 }
 
 /**
- * Open shelving: a matte-black steel frame (four uprights, no back, so the wall shows through)
- * with dark oak boards. A warm LED strip glows under the front edge of each board. The board just
- * above the desk's line holds the monitor and Tux; the rest hold books.
+ * Wall-washers: a soft, cool light from the ceiling either side of the viewport, falling down the
+ * wall at a grazing angle so the panels' edges and seams show. No shadows (cheap).
  */
-function Shelving({ wood, bookCount, tripSlugs, reducedMotion }: { wood: Wood; bookCount: number; tripSlugs: string[]; reducedMotion: boolean }) {
-	const { left, right, depth, top } = SHELF;
-	const front = WALL_Z + depth;
-	const zc = WALL_Z + depth / 2;
-	const width = right - left;
-	const board = <meshStandardMaterial map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} color="#5a4334" roughness={0.75} />;
-
+function WallWashers() {
+	const [targets] = useState(() => [new Object3D(), new Object3D()]);
 	return (
-		<group>
-			{[left + 0.012, right - 0.012].flatMap((x) =>
-				[WALL_Z + 0.02, front - 0.012].map((z) => (
-					<mesh key={`${x}${z}`} position={[x, (FLOOR_Y + top) / 2, z]} castShadow receiveShadow>
-						<boxGeometry args={[0.024, top - FLOOR_Y, 0.024]} />
-						{steel()}
-					</mesh>
-				)),
-			)}
-			{SHELVES.map((y, i) => (
-				<group key={i}>
-					<mesh position={[(left + right) / 2, y, zc]} castShadow receiveShadow>
-						<boxGeometry args={[width, 0.025, depth]} />
-						{board}
-					</mesh>
-					{/* The LED strip, tucked under the board's front edge. */}
-					<mesh position={[(left + right) / 2, y - 0.0145, front - 0.025]}>
-						<boxGeometry args={[width - 0.06, 0.003, 0.008]} />
-						<meshStandardMaterial color="#000" emissive="#ffd2a0" emissiveIntensity={3.2} />
-					</mesh>
+		<>
+			{[-1, 1].map((side, i) => (
+				<group key={side}>
+					<primitive object={targets[i]} position={[side * 1.75, 0.4, WALL_Z]} />
+					<spotLight position={[side * 1.75, 2.95, WALL_Z + 0.5]} target={targets[i]} color="#cdd8ff" intensity={8} decay={2} angle={0.8} penumbra={1} />
 				</group>
 			))}
-			{/* The strips' light, approximated by two lights (one per strip would be slow). */}
-			{/* A quarter-metre out from the shelves: any closer, and glossy surfaces (the screen)
-			    catch a highlight too bright for the effects buffer, which shows as garbage pixels. */}
-			<pointLight position={[(left + right) / 2, 0.45, front + 0.25]} color="#ffcf9a" intensity={0.6} distance={1.4} decay={2} />
-			<pointLight position={[(left + right) / 2, 1.1, front + 0.25]} color="#ffcf9a" intensity={0.5} distance={1.4} decay={2} />
-
-			<Books front={front} count={bookCount} />
-			<Monitor position={[0.78, SHELVES[1] + 0.0125, front - 0.13]} tripSlugs={tripSlugs} reducedMotion={reducedMotion} />
-			<Tux position={[1.22, SHELVES[1] + 0.0125 + 0.06, front - 0.12]} />
-		</group>
-	);
-}
-
-/** Which stretches of which shelves hold books (the monitor and Tux take the rest of shelf 1). */
-const BOOK_RUNS: { shelf: number; from: number; to: number }[] = [
-	{ shelf: 0, from: 0.38, to: 1.52 },
-	{ shelf: 1, from: 1.36, to: 1.52 },
-	{ shelf: 2, from: 0.38, to: 1.2 },
-	{ shelf: 3, from: 0.6, to: 1.52 },
-	{ shelf: 4, from: 0.38, to: 1.05 },
-	{ shelf: 5, from: 0.38, to: 1.52 },
-];
-
-/**
- * The books: one instanced mesh (one draw call for all of them). Each gets a seeded size and
- * colour, with the odd lean and lying-flat stack, so the rows look collected rather than
- * generated. Tux stands on a short stack of two.
- */
-function Books({ front, count }: { front: number; count: number }) {
-	const mesh = useRef<InstancedMesh>(null);
-
-	const books = useMemo(() => {
-		const rand = seededRandom('bookshelf');
-		const out: { position: Vector3; rotation: Quaternion; scale: Vector3; colour: Color }[] = [];
-		const up = new Vector3(0, 0, 1);
-		const pick = () => new Color(BOOK_COLOURS[Math.floor(rand() * BOOK_COLOURS.length)]).multiplyScalar(0.85 + rand() * 0.3);
-		// Tux's stand: two books lying flat.
-		const tuxBase = SHELVES[1] + 0.0125;
-		for (let i = 0; i < 2; i++) {
-			out.push({
-				position: new Vector3(1.22, tuxBase + 0.015 + i * 0.03, front - 0.12),
-				rotation: new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (i ? 0.08 : -0.05) + 0.2),
-				scale: new Vector3(0.17, 0.03, 0.12),
-				colour: pick(),
-			});
-		}
-		for (const run of BOOK_RUNS) {
-			const base = SHELVES[run.shelf] + 0.0125;
-			let x = run.from;
-			while (x < run.to && out.length < count) {
-				const roll = rand();
-				if (roll < 0.06) {
-					x += 0.05 + rand() * 0.1;
-					continue;
-				}
-				if (roll < 0.12 && run.to - x > 0.24) {
-					// A short stack lying flat.
-					const pile = 2 + Math.floor(rand() * 3);
-					let y = base;
-					const w = 0.17 + rand() * 0.06;
-					for (let i = 0; i < pile; i++) {
-						const t = 0.025 + rand() * 0.02;
-						out.push({
-							position: new Vector3(x + w / 2 + (rand() - 0.5) * 0.01, y + t / 2, front - 0.13),
-							rotation: new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), (rand() - 0.5) * 0.12),
-							scale: new Vector3(w, t, 0.15 + rand() * 0.05),
-							colour: pick(),
-						});
-						y += t;
-					}
-					x += w + 0.02;
-					continue;
-				}
-				const t = 0.02 + rand() * 0.035;
-				const h = 0.18 + rand() * 0.12;
-				const d = 0.15 + rand() * 0.08;
-				const lean = roll > 0.95 ? -(0.12 + rand() * 0.15) : 0;
-				out.push({
-					position: new Vector3(x + t / 2 + (lean ? h * Math.sin(-lean) * 0.5 : 0), base + (h / 2) * Math.cos(lean), front - 0.01 - d / 2 - rand() * 0.02),
-					rotation: new Quaternion().setFromAxisAngle(up, lean),
-					scale: new Vector3(t, h, d),
-					colour: pick(),
-				});
-				x += t + (lean ? h * Math.sin(-lean) : 0) + 0.001;
-			}
-		}
-		return out;
-	}, [front, count]);
-
-	useLayoutEffect(() => {
-		const m = mesh.current;
-		if (!m) return;
-		const matrix = new Matrix4();
-		books.forEach((b, i) => {
-			matrix.compose(b.position, b.rotation, b.scale);
-			m.setMatrixAt(i, matrix);
-			m.setColorAt(i, b.colour);
-		});
-		m.count = books.length;
-		m.instanceMatrix.needsUpdate = true;
-		if (m.instanceColor) m.instanceColor.needsUpdate = true;
-	}, [books]);
-
-	return (
-		<instancedMesh ref={mesh} args={[undefined, undefined, Math.max(2, count)]} castShadow receiveShadow>
-			<boxGeometry args={[1, 1, 1]} />
-			<meshStandardMaterial roughness={0.7} metalness={0} />
-		</instancedMesh>
+		</>
 	);
 }
 
 /**
- * A slim monitor on a stand, running a terminal. The screen is a canvas texture used as an
- * emissive map (it glows, it isn't lit), redrawn twice a second to blink the cursor. A faint
- * blue light in front of it washes the shelf and Tux.
+ * A recessed light high in the ceiling over the map: a soft, warm-neutral pool that lights the
+ * whole sheet evenly, gives the pins their shadows, and spills onto the wall panels. The fitting
+ * itself is a dim disc in the ceiling.
  */
-function Monitor({ position, tripSlugs, reducedMotion }: { position: [number, number, number]; tripSlugs: string[]; reducedMotion: boolean }) {
-	const [screen] = useState(() => {
-		const canvas = document.createElement('canvas');
-		canvas.width = 640;
-		canvas.height = 376;
-		drawTerminal(canvas, tripSlugs, true);
-		const texture = new CanvasTexture(canvas);
-		texture.colorSpace = SRGBColorSpace;
-		return { canvas, texture };
-	});
-	useEffect(() => {
-		if (reducedMotion) return;
-		let on = true;
-		const id = window.setInterval(() => {
-			on = !on;
-			drawTerminal(screen.canvas, tripSlugs, on);
-			screen.texture.needsUpdate = true;
-		}, 530);
-		return () => window.clearInterval(id);
-	}, [screen, tripSlugs, reducedMotion]);
-	useEffect(() => () => screen.texture.dispose(), [screen]);
-
-	const aluminium = <meshStandardMaterial color="#2a2b2f" metalness={0.8} roughness={0.4} />;
+function CeilingLight({ shadowMapSize }: { shadowMapSize: number }) {
+	const [target] = useState(() => new Object3D());
+	const position: Vector3Tuple = [0, CEILING_Y - 0.01, 0.5];
 	return (
-		<group position={position} rotation={[0, -0.22, 0]}>
-			<mesh position={[0, 0.004, 0]} castShadow receiveShadow>
-				<boxGeometry args={[0.16, 0.008, 0.11]} />
-				{aluminium}
+		<>
+			<primitive object={target} position={[0, 0, -0.1]} />
+			<spotLight
+				position={position}
+				target={target}
+				color="#ffe6cc"
+				intensity={41}
+				decay={2}
+				angle={0.62}
+				penumbra={1}
+				castShadow
+				shadow-mapSize={[shadowMapSize, shadowMapSize]}
+				shadow-radius={6}
+				shadow-bias={-0.0004}
+				shadow-normalBias={0.02}
+				shadow-camera-near={2}
+				shadow-camera-far={6}
+			/>
+			<mesh position={position} rotation={[Math.PI / 2, 0, 0]}>
+				<circleGeometry args={[0.08, 32]} />
+				<meshBasicMaterial color={[2.2, 2.0, 1.8]} />
 			</mesh>
-			<mesh position={[0, 0.06, -0.035]} castShadow>
-				<boxGeometry args={[0.03, 0.11, 0.012]} />
-				{aluminium}
-			</mesh>
-			<mesh position={[0, 0.16, -0.02]} castShadow>
-				<boxGeometry args={[0.44, 0.27, 0.014]} />
-				<meshStandardMaterial color="#0c0d0f" metalness={0.3} roughness={0.5} />
-			</mesh>
-			<mesh position={[0, 0.162, -0.0125]}>
-				<planeGeometry args={[0.42, 0.247]} />
-				{/* A matte (anti-glare) screen. */}
-				<meshStandardMaterial color="#000" emissive="#ffffff" emissiveMap={screen.texture} emissiveIntensity={1.3} roughness={0.7} />
-			</mesh>
-			<pointLight position={[0, 0.16, 0.25]} color="#9db4ff" intensity={0.15} distance={0.8} decay={2} />
-		</group>
-	);
-}
-
-/**
- * Tux, the Linux mascot, as a small vinyl figure: black body and flippers, white belly and eye
- * patches, orange beak and feet. About 15 cm tall, built from squashed spheres. (Tux was drawn by
- * Larry Ewing; see /credits.)
- */
-function Tux({ position }: { position: [number, number, number] }) {
-	const black = <meshPhysicalMaterial color="#111214" roughness={0.35} clearcoat={0.6} clearcoatRoughness={0.3} />;
-	const white = <meshPhysicalMaterial color="#efefef" roughness={0.4} clearcoat={0.4} />;
-	const orange = <meshPhysicalMaterial color="#f2a72c" roughness={0.45} clearcoat={0.4} />;
-	const blob = (p: [number, number, number], s: [number, number, number], m: ReactNode, key: string, rz = 0) => (
-		<mesh key={key} position={p} scale={s} rotation={[0, 0, rz]} castShadow>
-			<sphereGeometry args={[1, 32, 24]} />
-			{m}
-		</mesh>
-	);
-	return (
-		<group position={position} rotation={[0, -0.35, 0]}>
-			{blob([0, 0.058, 0], [0.045, 0.058, 0.04], black, 'body')}
-			{blob([0, 0.052, 0.02], [0.034, 0.046, 0.024], white, 'belly')}
-			{blob([0, 0.118, 0], [0.032, 0.03, 0.03], black, 'head')}
-			{blob([-0.011, 0.126, 0.024], [0.009, 0.013, 0.006], white, 'eyeL')}
-			{blob([0.011, 0.126, 0.024], [0.009, 0.013, 0.006], white, 'eyeR')}
-			{blob([-0.011, 0.125, 0.029], [0.0038, 0.0045, 0.002], black, 'pupilL')}
-			{blob([0.011, 0.125, 0.029], [0.0038, 0.0045, 0.002], black, 'pupilR')}
-			{blob([0, 0.109, 0.028], [0.016, 0.0075, 0.014], orange, 'beak')}
-			{blob([-0.045, 0.06, 0], [0.012, 0.038, 0.02], black, 'flipL', 0.35)}
-			{blob([0.045, 0.06, 0], [0.012, 0.038, 0.02], black, 'flipR', -0.35)}
-			{blob([-0.017, 0.005, 0.016], [0.02, 0.007, 0.026], orange, 'footL')}
-			{blob([0.017, 0.005, 0.016], [0.02, 0.007, 0.026], orange, 'footR')}
-		</group>
+		</>
 	);
 }

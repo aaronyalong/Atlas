@@ -9,18 +9,21 @@ import { PALETTE } from './palette';
  * half-cylinder shade of emerald "cased" glass (green outside, opal white inside) held over the
  * desk. Built from primitive shapes.
  *
- * Its light is broad and soft (a wide spotlight with a fully soft edge from a long tube bulb)
- * rather than a narrow cone: that hard cone over darkness is what made the old scene feel like
- * an interrogation room. A click on the lamp switches it off and on, like the pull chain.
+ * It stands at the back-left corner of the map, against the wall. Its light is broad and soft (a
+ * wide spotlight with a fully soft edge from a long tube bulb) over the left of the map, and a
+ * little spills up the wall panels behind it: the one warm light in a cool room. A click on the
+ * lamp switches it off and on, like the pull chain.
  *
  * Positions are in metres; the desk top is y = 0, +z toward the viewer.
  */
-export const LAMP_POSITION: Vector3Tuple = [-0.5, 0, -0.4];
+export const LAMP_POSITION: Vector3Tuple = [-1.3, 0, -0.72];
 const SHADE = { radius: 0.072, length: 0.27, height: 0.33, tilt: -0.22 };
-/** Where the light is aimed: the left-centre of the map. */
-const AIM: Vector3Tuple = [-0.15, 0, -0.05];
+/** Where the light is aimed: the left of the map (Africa, Europe). */
+const AIM: Vector3Tuple = [-0.85, 0, -0.1];
 const STEM_Z = -0.095;
 const ARM_Y = SHADE.height + SHADE.radius + 0.006;
+/** Brightness of the wash on the wall. */
+const WASH = 0.3;
 
 interface BankersLampProps {
 	shadowMapSize: number;
@@ -37,6 +40,7 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 
 	const spot = useRef<SpotLight>(null);
 	const glow = useRef<PointLight>(null);
+	const wash = useRef<PointLight>(null);
 	const inner = useRef<MeshStandardMaterial>(null);
 	const outer = useRef<MeshStandardMaterial>(null);
 	const bulb = useRef<MeshStandardMaterial>(null);
@@ -49,6 +53,7 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 		const k = level.current;
 		if (spot.current) spot.current.intensity = 2.4 * k;
 		if (glow.current) glow.current.intensity = 0.2 * k;
+		if (wash.current) wash.current.intensity = WASH * k;
 		if (inner.current) inner.current.emissiveIntensity = 0.05 + 1.6 * k;
 		if (outer.current) outer.current.emissiveIntensity = 0.02 + 0.3 * k;
 		if (bulb.current) bulb.current.emissiveIntensity = 0.05 + 7 * k;
@@ -81,16 +86,20 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 				shadow-radius={8}
 				shadow-bias={-0.0004}
 				shadow-normalBias={0.02}
-				// Only the desk needs the lamp's shadows: a short range keeps the bookshelf and walls out
-				// of the shadow pass, which is re-drawn every frame.
+				// Only the desk needs the lamp's shadows: a short range keeps the walls out of the
+				// shadow pass, which is re-drawn every frame.
 				shadow-camera-near={0.03}
-				shadow-camera-far={1.2}
+				shadow-camera-far={1.4}
 			/>
 			{/* A little light spills out sideways under the shade: warms the lamp's base and the desk
 			    around it. Kept below the shade and clear of the brass: a light a few centimetres from
 			    polished metal makes a highlight too bright for the effects buffer to hold (it shows
 			    up as a streak of garbage pixels). */}
 			<pointLight ref={glow} position={[0, SHADE.height - 0.08, 0.04]} color={PALETTE.lamp} intensity={0.2} distance={0.9} decay={2} />
+			{/* The warm glow the lamp throws up the wall behind it, as light bouncing off the desk
+			    would. Half a metre out from the wall (closer makes a hot spot rather than a glow),
+			    and well clear of the brass (see above). */}
+			<pointLight ref={wash} position={[0.02, 0.7, 0.3]} color={PALETTE.lamp} intensity={WASH} distance={2} decay={2} />
 
 			<group
 				onPointerOver={(e: ThreeEvent<PointerEvent>) => {
@@ -150,9 +159,12 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 							color={PALETTE.shadeGreen}
 							emissive={PALETTE.shadeGlow}
 							emissiveIntensity={0.3}
-							roughness={0.12}
+							// Not glassier than this: sharper, and the lights above the lamp make highlights too
+							// bright for the effects buffer at grazing angles (white streaks with blue-black
+							// garbage in them).
+							roughness={0.3}
 							clearcoat={1}
-							clearcoatRoughness={0.04}
+							clearcoatRoughness={0.22}
 						/>
 					</mesh>
 					{/* Inside: opal white, lit up by the bulb (drawn brighter than white, so it blooms). */}
@@ -164,7 +176,7 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 					{[-1, 1].map((side) => (
 						<mesh key={side} position={[(side * SHADE.length) / 2, 0, 0]} rotation={[0, side * (Math.PI / 2), 0]}>
 							<circleGeometry args={[SHADE.radius, 40, 0, Math.PI]} />
-							<meshPhysicalMaterial color={PALETTE.shadeGreen} roughness={0.15} clearcoat={1} side={DoubleSide} />
+							<meshPhysicalMaterial color={PALETTE.shadeGreen} roughness={0.3} clearcoat={1} clearcoatRoughness={0.22} side={DoubleSide} />
 						</mesh>
 					))}
 					{/* Brass rims along the open edges, and knobs on the ends. */}
@@ -193,7 +205,8 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 								{brass}
 							</mesh>
 						))}
-						<mesh position={[0, -0.072, 0]} castShadow>
+						{/* No shadow: hanging right in front of the bulb, it would throw a blot across the map. */}
+						<mesh position={[0, -0.072, 0]}>
 							<cylinderGeometry args={[0.0035, 0.0045, 0.012, 12]} />
 							{brass}
 						</mesh>

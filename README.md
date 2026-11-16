@@ -1,10 +1,9 @@
 # Atlas: travel.aaronyalong.com
 
 Aaron Yalong's travel scrapbook, a companion to [aaronyalong.com](https://aaronyalong.com).
-The home page is a 3D desk in a dark studio on a station in orbit (React Three Fiber in an Astro
-island): a large world map across the desk with a pin for every trip, a banker's lamp, a Nikon
-and a journal; black steel shelving with a terminal and Tux; a viewport onto Earth, where a
-shooting star, a meteor and a rocket go by now and then. Click a place on
+The home page is a 3D desk on an observation deck in orbit (React Three Fiber in an Astro
+island): a large world map across the desk with a pin for every trip and a banker's lamp at
+its corner, under a broad viewport onto Earth, where a shooting star, a meteor and a rocket go by now and then. Click a place on
 the map and that trip's photos rise out of it with its details. Every trip is also
 reachable without the 3D at [`/trips`](src/pages/trips.astro).
 
@@ -24,10 +23,10 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 
 - `src/components/desk/`: the 3D scene. Start at `DeskApp.tsx` (the island) → `Scene.tsx`.
   Camera framing, orbit limits and the opening shot are in `camera.ts`; colours in `palette.ts`.
-  The room (wall, viewport, shelving, terminal, Tux, sunlight) is `Room.tsx`; Earth, the stars
-  and the passing events are `SpaceView.tsx`; the lamp is
-  `BankersLamp.tsx`; the map and its pins are `WorldMap.tsx` and `Pins.tsx`; what opens when a
-  place is clicked is `TripReveal.tsx`; the journal and camera are `Props.tsx`.
+  The room (wall panels, viewport, sunlight, ceiling light) is `Room.tsx`; Earth, the stars and
+  the passing events are `SpaceView.tsx`; the desk is `Desk.tsx`; the lamp is `BankersLamp.tsx`; the shaft of sunlight
+  and its dust are `SunBeam.tsx`; the map and its pins are
+  `WorldMap.tsx` and `Pins.tsx`; what opens when a place is clicked is `TripReveal.tsx`.
 - `src/content/trips/`: one Markdown file per trip (schema in `src/content.config.ts`). Put a
   trip's photos in a folder next to it (e.g. `tokyo/cover.jpg`); they're re-encoded at build
   time, which strips EXIF/GPS, and the originals are never published.
@@ -43,14 +42,17 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 Only assets whose licence allows use here (CC0, or CC-BY with credit). Every third-party asset
 is listed on [`/credits`](src/pages/credits.astro), whether its licence requires it or not.
 
-- `public/textures/`: ambientCG Wood051, Paper001 and Leather037, re-encoded from the 1K JPG sets
-  to WebP without metadata (wood 1024px, paper and leather 512px). Only colour (wood), normal and
+- `public/textures/`: ambientCG Wood051 and Paper001, re-encoded from the 1K JPG sets to WebP
+  (the wood's colour map graded from walnut to a smoked oak: saturation down to about a fifth, a
+  cool cast, a little more grain contrast)
+  without metadata (wood 1024px, paper 512px). Only colour (wood), normal and
   roughness maps are kept.
 - `public/space/`: Solar System Scope's Earth day, night and cloud maps (CC BY 4.0, credited on
   `/credits`), from the 8k originals: 4096 and 2048 px (clouds 2048 and 1024 px), WebP, no
   metadata. Desktop loads the larger set, phones the smaller.
 - `public/env/`: Poly Haven `small_empty_room_1`, the 1k HDR halved to 512×256 (a 2×2 box filter
-  in linear light). The scene uses it for reflections and a faint fill; the lamp is the key light.
+  in linear light). The scene uses it for reflections and a faint fill; the sunlight, the ceiling light and the
+  lamp are the key lights.
 
 ## Dev-only pages
 
