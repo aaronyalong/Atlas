@@ -7,18 +7,23 @@ import type { DeskMap, DeskTrip } from './types';
 import { mapToDesk } from './WorldMap';
 
 /*
- * Push-pins, one per trip, stuck into the map at each trip's place.
+ * Map pins, one per trip, stuck into the map at each trip's place.
  *
- * A steel needle with a glossy blue head (the portfolio's accent, brightened to stand out on the
- * navy chart), a ring rippling out across the paper beneath it, and the place's name always on
- * show. Each pin leans a few degrees in its own direction, like pins pushed in by hand.
+ * Brass, like the lamp and the window: a polished dome head on a stepped collar (the deco
+ * ziggurat in miniature) and a steel needle; a ring of gold light rippling out across the paper
+ * beneath it, and the place's name always on show. Each pin leans a few degrees in its own
+ * direction, like pins pushed in by hand.
  */
-const HEAD_RADIUS = 0.007;
-const NEEDLE_LENGTH = 0.02;
+// About one and a half times life size: true to size, on a 3 m map seen from 4 m away, they'd
+// be specks.
+const HEAD_RADIUS = 0.011;
+const NEEDLE_LENGTH = 0.028;
 const NEEDLE_RADIUS = 0.0007;
 const HOVER_LIFT = 0.006;
 const EASE = 8;
-export const PIN_BLUE = '#5b8cff';
+/** The ripple's gold, and the brass. */
+const RIPPLE_GOLD = '#e8b85c';
+const BRASS = '#c29a4b';
 
 interface PinsProps {
 	trips: DeskTrip[];
@@ -123,8 +128,8 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 		<group position={position}>
 			{/* The ripple, lying on the paper. */}
 			<mesh ref={ring} position={[0, 0.0012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-				<ringGeometry args={[0.009, 0.0115, 48]} />
-				<meshBasicMaterial color={PIN_BLUE} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />
+				<ringGeometry args={[0.013, 0.0165, 48]} />
+				<meshBasicMaterial color={RIPPLE_GOLD} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />
 			</mesh>
 
 			<group ref={lifter}>
@@ -134,10 +139,20 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 						<cylinderGeometry args={[NEEDLE_RADIUS, NEEDLE_RADIUS, NEEDLE_LENGTH + 0.006, 8]} />
 						<meshStandardMaterial color="#d6d6da" metalness={1} roughness={0.32} />
 					</mesh>
-					{/* Head: glossy plastic, with a clearcoat for the sharp highlight plastic has. */}
-					<mesh position={[0, NEEDLE_LENGTH + HEAD_RADIUS * 0.8, 0]} castShadow onPointerOver={onPointerOver} onPointerOut={() => onHover(null)} onClick={onClick}>
-						<sphereGeometry args={[HEAD_RADIUS, 24, 18]} />
-						<meshPhysicalMaterial color={PIN_BLUE} emissive={PIN_BLUE} emissiveIntensity={lifted ? 0.35 : 0.12} roughness={0.3} clearcoat={1} clearcoatRoughness={0.08} />
+					{/* Stepped collar: two brass discs, the lower one wider. */}
+					<mesh position={[0, NEEDLE_LENGTH + 0.0018, 0]} castShadow>
+						<cylinderGeometry args={[HEAD_RADIUS * 0.95, HEAD_RADIUS * 1.05, 0.0036, 24]} />
+						<meshStandardMaterial color={BRASS} metalness={1} roughness={0.38} />
+					</mesh>
+					<mesh position={[0, NEEDLE_LENGTH + 0.0051, 0]} castShadow>
+						<cylinderGeometry args={[HEAD_RADIUS * 0.72, HEAD_RADIUS * 0.8, 0.003, 24]} />
+						<meshStandardMaterial color={BRASS} metalness={1} roughness={0.38} />
+					</mesh>
+					{/* Head: a polished brass dome. A faint warm glow (stronger while hovered) keeps it
+					    from going dark against the navy sea. */}
+					<mesh position={[0, NEEDLE_LENGTH + 0.0066, 0]} castShadow onPointerOver={onPointerOver} onPointerOut={() => onHover(null)} onClick={onClick}>
+						<sphereGeometry args={[HEAD_RADIUS * 0.75, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+						<meshStandardMaterial color={BRASS} metalness={1} roughness={0.3} emissive="#7a5520" emissiveIntensity={lifted ? 0.9 : 0.35} />
 					</mesh>
 					{/* A larger invisible target, so the pin is easy to hit with a finger. */}
 					<mesh position={[0, NEEDLE_LENGTH, 0]} onPointerOver={onPointerOver} onPointerOut={() => onHover(null)} onClick={onClick} visible={false}>
@@ -148,7 +163,7 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 				{!anySelected && (
 					// Screen-space label (no `transform`): always upright and readable.
 					<Html position={[0, NEEDLE_LENGTH + 0.016, 0]} zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
-						<span className={`pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}>{trip.title}</span>
+						<span className={`deco-tag pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}>{trip.title}</span>
 					</Html>
 				)}
 			</group>

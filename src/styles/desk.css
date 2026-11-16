@@ -45,6 +45,15 @@
 	pointer-events: auto;
 }
 
+/* Text over the scene keeps a soft dark halo, so the window's gold strip can't swallow it. */
+.desk-brand,
+.desk-hint,
+.desk-credit {
+	text-shadow:
+		0 1px 2px rgb(0 0 0 / 0.9),
+		0 0 12px rgb(0 0 0 / 0.75);
+}
+
 .desk-topbar {
 	top: 0;
 }
@@ -57,70 +66,97 @@
 .desk-brand {
 	display: flex;
 	align-items: baseline;
-	gap: var(--space-3);
+	gap: var(--space-4);
 }
 
+/* "TRAVEL", spaced out in Poiret One, like the title on the map. */
 .desk-brand h1 {
-	font-size: var(--text-xl);
+	color: var(--ivory);
+	font-size: 1.6rem;
+	letter-spacing: 0.32em;
+	text-transform: uppercase;
 }
 
 .desk-brand a {
-	color: var(--color-text-muted);
-	font-size: var(--text-sm);
+	color: var(--gold);
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.22em;
 	text-decoration: none;
+	text-transform: uppercase;
 }
 
 .desk-brand a:hover {
-	color: var(--color-accent);
+	color: var(--gold-bright);
 }
 
 .desk-hint {
-	color: var(--color-text-muted);
-	font-size: var(--text-sm);
+	color: color-mix(in srgb, var(--ivory) 70%, transparent);
+	font-size: 0.78rem;
+	letter-spacing: 0.08em;
 	pointer-events: none;
 }
 
-/* Pill buttons and links, in the style of the portfolio's interest pills. */
+/* The one credit the site has to show: Earth's textures are CC BY 4.0. */
+.desk-credit {
+	margin-top: var(--space-1);
+	color: color-mix(in srgb, var(--ivory) 45%, transparent);
+	font-size: 0.68rem;
+	letter-spacing: 0.06em;
+	pointer-events: auto;
+}
+
+.desk-credit a {
+	color: inherit;
+}
+
+.desk-credit a:hover {
+	color: var(--gold-bright);
+}
+
+/* Buttons and links on the desk: gold-edged deco tags (with .deco-tag). */
 .desk-pill {
+	--fill: color-mix(in srgb, #0d0b09 72%, transparent);
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-2);
-	padding: var(--space-2) var(--space-4);
-	background-color: color-mix(in srgb, var(--color-surface) 70%, transparent);
-	backdrop-filter: blur(8px);
-	border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
-	border-radius: 999px;
-	color: var(--color-text);
+	padding: 0.7rem 1.15rem 0.6rem;
+	border: 0;
+	color: var(--ivory);
 	font: inherit;
-	font-size: var(--text-sm);
+	font-size: 0.74rem;
 	font-weight: 600;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
 	white-space: nowrap;
 	text-decoration: none;
 	cursor: pointer;
 	transition:
 		transform 0.25s var(--ease-out),
-		border-color 0.2s ease,
-		box-shadow 0.2s ease;
+		color 0.2s ease;
+}
+
+.desk-pill::before {
+	backdrop-filter: blur(8px);
+	transition: background-color 0.2s ease;
 }
 
 .desk-pill:hover,
 .desk-pill:focus-visible {
-	color: var(--color-text);
-	border-color: color-mix(in srgb, var(--color-accent) 70%, transparent);
-	box-shadow:
-		0 0 0 1px color-mix(in srgb, var(--color-accent) 25%, transparent),
-		0 12px 32px -12px color-mix(in srgb, var(--color-accent) 80%, transparent);
+	--line: var(--gold-bright);
+	--fill: color-mix(in srgb, #2a1f12 88%, transparent);
+	color: var(--gold-bright);
 }
 
 .desk-pill:focus-visible {
-	outline: 2px solid var(--color-accent);
-	outline-offset: 3px;
-	border-radius: 999px;
+	outline: none;
+	--line: var(--ivory);
 }
 
 .desk-pill svg {
-	width: 1rem;
-	height: 1rem;
+	width: 0.95rem;
+	height: 0.95rem;
+	margin-top: -2px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -163,23 +199,24 @@
 }
 
 .loader-title {
-	color: var(--color-text-muted);
-	font-size: var(--text-sm);
-	letter-spacing: 0.02em;
+	color: var(--ivory);
+	font-family: var(--font-display);
+	font-size: 1.15rem;
+	letter-spacing: 0.24em;
+	text-transform: uppercase;
 }
 
 .loader-bar {
 	width: min(14rem, 60vw);
-	height: 3px;
+	height: 2px;
 	overflow: hidden;
-	border-radius: 999px;
-	background: color-mix(in srgb, var(--color-text) 12%, transparent);
+	background: color-mix(in srgb, var(--gold) 22%, transparent);
 }
 
 .loader-bar span {
 	display: block;
 	height: 100%;
-	background: var(--lamp);
+	background: linear-gradient(90deg, var(--gold), var(--gold-bright));
 	transform-origin: left;
 	transition: transform 0.3s ease;
 }
@@ -204,17 +241,16 @@
 	}
 }
 
-/* ---------- Polaroid hover label ---------- */
+/* ---------- Hover labels (lamp, gauges): a deco tag (with .deco-tag) ---------- */
 .desk-label {
+	--cut: 6px;
 	display: block;
-	padding: var(--space-1) var(--space-3);
-	background-color: color-mix(in srgb, var(--dark-bg) 80%, transparent);
-	backdrop-filter: blur(6px);
-	border: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
-	border-radius: 999px;
-	color: var(--color-text);
-	font-size: var(--text-sm);
+	padding: 0.45rem 0.85rem 0.35rem;
+	color: var(--ivory);
+	font-size: 0.7rem;
 	font-weight: 600;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
 	white-space: nowrap;
 }
 
@@ -231,22 +267,24 @@
 	}
 }
 
-/* ---------- Trip card (on the back of an opened polaroid) ----------
- * Laid out at 440 × 535 px, the polaroid's proportions; drei's <Html transform> scales it onto
- * the print in 3D. It's cream paper in both themes, so it sets its own colours.
+/* ---------- Trip card (beside an opened place's photos) ----------
+ * Laid out at 440 × 535 px; drei's <Html transform> scales it into the scene. Ivory card stock
+ * framed with a double gold rule, like a deco menu card, in both themes, so it sets its own
+ * colours.
  */
 .trip-card {
 	--card-ink: var(--ink);
+	--muted: #6b6259;
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	align-items: center;
 	width: 440px;
 	height: 535px;
-	padding: 44px 40px 36px;
+	padding: 56px 46px 44px;
 	background:
-		radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.35), transparent 60%),
+		radial-gradient(circle at 30% 15%, rgb(255 255 255 / 0.4), transparent 60%),
 		var(--paper);
-	/* Hovering in front of the desk: a soft shadow below and a thin edge, so it reads as card stock. */
 	box-shadow:
 		0 0 0 1px rgb(0 0 0 / 0.08),
 		0 30px 60px -20px rgb(0 0 0 / 0.65);
@@ -254,10 +292,29 @@
 	font-family: var(--font-sans);
 	font-size: 19px;
 	line-height: 1.5;
+	text-align: center;
 	color-scheme: light;
-	/* Local accent: the portfolio's light-mode blue reads well on cream. */
-	--color-accent: #2f5bd3;
-	--color-text-muted: #6b6259;
+	--color-accent: var(--gold-ink);
+	--color-text-muted: var(--muted);
+}
+
+/* The double rule: an outer line and, inside it, a second with stepped corners. */
+.trip-card::before,
+.trip-card::after {
+	content: '';
+	position: absolute;
+	pointer-events: none;
+}
+
+.trip-card::before {
+	inset: 12px;
+	border: 1.5px solid var(--gold-ink);
+}
+
+.trip-card::after {
+	inset: 18px;
+	border: 1px solid color-mix(in srgb, var(--gold-ink) 60%, transparent);
+	clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -273,102 +330,120 @@
 }
 
 .trip-card-place {
-	color: var(--color-text-muted);
-	font-size: 15px;
-	font-weight: 600;
-	letter-spacing: 0.08em;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	color: var(--gold-ink);
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.32em;
 	text-transform: uppercase;
 }
 
+.trip-card-place::before,
+.trip-card-place::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: currentColor;
+	opacity: 0.6;
+}
+
 .trip-card-title {
-	margin-top: 2px;
-	font-family: 'Caveat', cursive;
-	font-size: 64px;
-	font-weight: 600;
-	line-height: 1;
+	margin-top: 14px;
+	font-family: var(--font-display);
+	font-size: 50px;
+	font-weight: 400;
+	letter-spacing: 0.08em;
+	line-height: 1.05;
+	text-transform: uppercase;
 }
 
 .trip-card-dates {
-	margin-top: 12px;
-	color: var(--color-text-muted);
+	margin-top: 14px;
+	color: var(--muted);
+	font-size: 14px;
+	font-weight: 600;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
 }
 
 .trip-card-blurb {
 	flex: 1;
-	margin-top: 18px;
+	margin-top: 20px;
 	overflow: hidden;
 }
 
 .trip-card .todo {
 	border-color: currentColor;
-	color: var(--color-text-muted);
+	color: var(--muted);
 	font-size: 15px;
 }
 
+/* The link: a deco tag in ink, filling with ink on hover. */
 .trip-card-open {
-	align-self: flex-start;
-	padding: 10px 22px;
-	border: 1.5px solid var(--card-ink);
-	border-radius: 999px;
+	--cut: 8px;
+	--line: var(--card-ink);
+	--fill: var(--paper);
+	padding: 13px 26px 10px;
 	color: var(--card-ink);
-	font-weight: 650;
+	font-size: 14px;
+	font-weight: 700;
+	letter-spacing: 0.24em;
 	text-decoration: none;
-	transition:
-		background-color 0.2s ease,
-		color 0.2s ease;
+	text-transform: uppercase;
+	transition: color 0.2s ease;
 }
 
 .trip-card-open:hover,
 .trip-card-open:focus-visible {
-	background-color: var(--card-ink);
+	--fill: var(--card-ink);
 	color: var(--paper);
+	outline: none;
 }
 
 .trip-card-close {
 	position: absolute;
-	top: 14px;
-	right: 14px;
-	width: 44px;
-	height: 44px;
+	z-index: 1;
+	top: 24px;
+	right: 24px;
+	width: 40px;
+	height: 40px;
 	border: 0;
-	border-radius: 50%;
 	background: transparent;
-	color: var(--color-text-muted);
+	color: var(--muted);
 	font: inherit;
-	font-size: 30px;
+	font-size: 28px;
 	line-height: 1;
 	cursor: pointer;
 }
 
 .trip-card-close:hover {
-	background-color: rgb(0 0 0 / 0.06);
 	color: var(--card-ink);
 }
 
 .trip-card :focus-visible {
-	outline: 3px solid var(--color-accent);
+	outline: 2px solid var(--gold-ink);
 	outline-offset: 3px;
 }
 
-/* ---------- Pin labels ----------
+/* ---------- Pin labels (a deco tag, with .deco-tag) ----------
  * Each place's name, always on show next to its pin (screen-space, so always upright). Placed
- * above the pin, or beside it when two places are close; brighter while hovered or focused.
+ * above the pin, or beside it when two places are close; lit gold while hovered or focused.
  */
 .pin-label {
+	--cut: 5px;
+	--line: color-mix(in srgb, var(--gold) 65%, transparent);
 	display: block;
-	padding: 2px 8px;
-	background-color: color-mix(in srgb, #0b1220 78%, transparent);
-	border: 1px solid color-mix(in srgb, #5b8cff 45%, transparent);
-	border-radius: 999px;
-	color: #e6eaf5;
-	font-size: 12px;
+	padding: 0.32rem 0.6rem 0.22rem;
+	color: var(--ivory);
+	font-size: 0.66rem;
 	font-weight: 600;
-	letter-spacing: 0.02em;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
 	white-space: nowrap;
-	transition:
-		border-color 0.2s ease,
-		background-color 0.2s ease,
-		box-shadow 0.2s ease;
+	transition: color 0.2s ease;
 }
 
 .pin-label-above {
@@ -389,13 +464,13 @@
 
 @media (max-width: 40rem) {
 	.pin-label {
-		padding: 1px 6px;
-		font-size: 11px;
+		padding: 0.25rem 0.45rem 0.17rem;
+		font-size: 0.6rem;
 	}
 }
 
 .pin-label.is-active {
-	background-color: color-mix(in srgb, #142242 90%, transparent);
-	border-color: #8aa8ff;
-	box-shadow: 0 0 14px -2px color-mix(in srgb, #5b8cff 80%, transparent);
+	--line: var(--gold-bright);
+	--fill: color-mix(in srgb, #3a2a12 92%, transparent);
+	color: var(--gold-bright);
 }

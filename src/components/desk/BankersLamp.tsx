@@ -16,7 +16,7 @@ import { PALETTE } from './palette';
  *
  * Positions are in metres; the desk top is y = 0, +z toward the viewer.
  */
-export const LAMP_POSITION: Vector3Tuple = [-1.3, 0, -0.72];
+export const LAMP_POSITION: Vector3Tuple = [-1.4, 0, -0.72];
 const SHADE = { radius: 0.072, length: 0.27, height: 0.33, tilt: -0.22 };
 /** Where the light is aimed: the left of the map (Africa, Europe). */
 const AIM: Vector3Tuple = [-0.85, 0, -0.1];
@@ -66,6 +66,9 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 	});
 
 	const brass = <meshStandardMaterial color={PALETTE.brass} metalness={1} roughness={0.34} />;
+	// The pull chain hangs a few centimetres from the fill light under the shade: polished, its
+	// highlight overflows the effects buffer (a coloured speck). Handled brass dulls anyway.
+	const chainBrass = <meshStandardMaterial color={PALETTE.brass} metalness={1} roughness={0.65} />;
 
 	return (
 		<group position={LAMP_POSITION}>
@@ -95,7 +98,9 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 			    around it. Kept below the shade and clear of the brass: a light a few centimetres from
 			    polished metal makes a highlight too bright for the effects buffer to hold (it shows
 			    up as a streak of garbage pixels). */}
-			<pointLight ref={glow} position={[0, SHADE.height - 0.08, 0.04]} color={PALETTE.lamp} intensity={0.2} distance={0.9} decay={2} />
+			{/* Short reach (distance): just the base and the desk round it. Any further and it lights
+			    the window's brass trim edge-on from 20 cm, which overflows in the same way. */}
+			<pointLight ref={glow} position={[0, SHADE.height - 0.08, 0.04]} color={PALETTE.lamp} intensity={0.2} distance={0.55} decay={2} />
 			{/* The warm glow the lamp throws up the wall behind it, as light bouncing off the desk
 			    would. Half a metre out from the wall (closer makes a hot spot rather than a glow),
 			    and well clear of the brass (see above). */}
@@ -202,20 +207,20 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 						{Array.from({ length: 11 }, (_, i) => (
 							<mesh key={i} position={[0, -0.004 - i * 0.0055, 0]}>
 								<sphereGeometry args={[0.0017, 8, 6]} />
-								{brass}
+								{chainBrass}
 							</mesh>
 						))}
 						{/* No shadow: hanging right in front of the bulb, it would throw a blot across the map. */}
 						<mesh position={[0, -0.072, 0]}>
 							<cylinderGeometry args={[0.0035, 0.0045, 0.012, 12]} />
-							{brass}
+							{chainBrass}
 						</mesh>
 					</group>
 				</group>
 
 				{hovered && (
 					<Html position={[0, SHADE.height + 0.14, 0]} center zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
-						<span className="desk-label">{on ? 'Desk lamp: click to switch off' : 'Desk lamp: click to switch on'}</span>
+						<span className="deco-tag desk-label">{on ? 'Desk lamp: click to switch off' : 'Desk lamp: click to switch on'}</span>
 					</Html>
 				)}
 			</group>

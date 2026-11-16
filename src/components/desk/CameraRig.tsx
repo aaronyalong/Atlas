@@ -1,7 +1,7 @@
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useRef, type RefObject } from 'react';
-import { Box3, MathUtils, Plane, Raycaster, Vector2, Vector3, type PerspectiveCamera, type Vector3Tuple } from 'three';
+import { AdditiveBlending, Box3, MathUtils, Plane, Raycaster, Vector2, Vector3, type Intersection, type Mesh, type PerspectiveCamera, type Vector3Tuple } from 'three';
 import { establishingShot, FOCUS_POLAR, ORBIT_LIMITS, TARGET_BOUNDS, type Framing } from './camera';
 
 const { ACTION } = CameraControlsImpl;
@@ -30,10 +30,10 @@ const BOUNDS = new Box3(new Vector3(...TARGET_BOUNDS.min), new Vector3(...TARGET
  * The limited orbit: drag to rotate around the desk, scroll or pinch to zoom, right-drag or two
  * fingers to slide across the map, all inside ORBIT_LIMITS and TARGET_BOUNDS.
  *
- * Scrolling zooms toward whatever is under the pointer, the way a map app does: the point of the
- * desk under the cursor stays under the cursor while everything else grows around it. (The
- * library's own dolly-to-cursor moves the orbit point off the desk, up toward the window, so
- * this does it by hand: see zoomAt.)
+ * Scrolling zooms toward whatever is under the pointer, the way a map app does: the point under
+ * the cursor (on the map, the lamp, the gauges...) stays under the cursor while everything else
+ * grows around it. (The library's own dolly-to-cursor moves the orbit point off the desk, up
+ * toward the window, so this does it by hand: see zoomAt.)
  *
  * Why CameraControls (drei's wrapper of the camera-controls library) rather than OrbitControls:
  * it can animate the camera to any position and target with one call (`setLookAt(..., true)`)
@@ -44,6 +44,7 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 	const hadFocus = useRef(false);
 	const introPlayed = useRef(false);
 	const camera = useThree((state) => state.camera) as PerspectiveCamera;
+	const scene = useThree((state) => state.scene);
 	useEffect(() => {
 		const controls = controlsRef.current;
 		if (!controls) return;
@@ -71,15 +72,16 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 		controls.setLookAt(...framing.position, ...framing.target, false);
 		controls.saveState();
 
-		// Dev builds only (stripped from production): lets scripts read and drive the camera.
-		if (import.meta.env.DEV) (window as unknown as { __deskControls?: CameraControlsImpl }).__deskControls = controls;
+		// Dev builds only (stripped from production): lets scripts read and drive the camera, and
+		// reach the scene.
+		if (import.meta.env.DEV) Object.assign(window, { __deskControls: controls, __deskScene: scene });
 
 		// Before the opening move has played, wait at the establishing shot instead.
 		if (!introPlayed.current && !reducedMotion) {
 			const shot = establishingShot(framing);
 			controls.setLookAt(...shot.position, ...shot.target, false);
 		}
-	}, [controlsRef, framing, camera, reducedMotion]);
+	}, [controlsRef, framing, camera, scene, reducedMotion]);
 
 	// The opening move: once the loading screen has faded, crane slowly up from the room shot to
 	// the starting view (the saved "home" state), then go back to the normal easing.
@@ -122,6 +124,9 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 	// Scroll to zoom toward the cursor.
 	const gl = useThree((state) => state.gl);
 	useEffect(() => {
+		// Solid things only: not the glows, the sunbeam or the dust (all drawn additively), nor
+		// anything that isn't a mesh (stars, motes).
+		const solid = (h: Intersection) => (h.object as Mesh).isMesh && h.object.visible && (h.object as Mesh & { material: { blending?: number } }).material.blending !== AdditiveBlending;
 		const element = gl.domElement;
 		const raycaster = new Raycaster();
 		const pointer = new Vector2();
@@ -142,15 +147,16 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 			const distance = position.distanceTo(target);
 			const wanted = distance * Math.exp(MathUtils.clamp(pixels, -120, 120) * 0.0018);
 			const scale = MathUtils.clamp(wanted, controls.minDistance, controls.maxDistance) / distance;
-			// The point under the cursor: on the desk, or (pointing up at the window) just the
-			// orbit point, which makes it an ordinary zoom.
-			const anchor = raycaster.ray.intersectPlane(DESK_PLANE, hit) && BOUNDS.containsPoint(hit.setY(0)) ? hit : target;
+			// The point under the cursor: the nearest solid thing there, else the desk's plane,
+			// else (pointing out of the window) the orbit point, which makes it an ordinary zoom.
+			const first = raycaster.intersectObjects(scene.children, true).find(solid);
+			const anchor = first ? hit.copy(first.point) : raycaster.ray.intersectPlane(DESK_PLANE, hit) && BOUNDS.containsPoint(hit.setY(0)) ? hit : target;
 			zoomAt(position, target, anchor, scale);
 			controls.setLookAt(position.x, position.y, position.z, target.x, target.y, target.z, true);
 		};
 		element.addEventListener('wheel', onWheel, { passive: false });
 		return () => element.removeEventListener('wheel', onWheel);
-	}, [gl, camera, controlsRef]);
+	}, [gl, camera, scene, controlsRef]);
 
 	return (
 		<CameraControls

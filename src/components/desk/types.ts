@@ -16,6 +16,8 @@ export interface DeskTrip {
 	photos: { src: string; alt: string; caption: string | null }[];
 	/** Where its pin goes: fractions of the sheet's width and height from the top-left corner. */
 	map: [number, number] | null;
+	/** IANA time zone, for its world clock on the gauge panel; null if not set. */
+	timeZone: string | null;
 }
 
 /** The map sheet, as prepared at build time. */

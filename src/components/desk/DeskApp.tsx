@@ -128,10 +128,17 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 			</ul>
 
 			<div className="desk-hud">
-				<p className="desk-hint">
-					{profile.isMobile ? 'Tap a place on the map · drag to look · pinch to zoom' : 'Click a place on the map · drag to look around · scroll to zoom · right-drag to move'}
-				</p>
-				<button type="button" className="desk-pill" onClick={resetView}>
+				<div>
+					<p className="desk-hint">
+						{profile.isMobile ? 'Tap a place on the map · drag to look · pinch to zoom' : 'Click a place on the map · drag to look around · scroll to zoom · right-drag to move'}
+					</p>
+					{/* Earth's textures are CC BY 4.0: the licence asks for this credit wherever they're shown. */}
+					<p className="desk-credit">
+						Earth imagery: <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a>,{' '}
+						<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
+					</p>
+				</div>
+				<button type="button" className="deco-tag desk-pill" onClick={resetView}>
 					<ResetIcon />
 					Reset view
 				</button>
@@ -163,7 +170,7 @@ function Fallback({ reason }: { reason: string }) {
 	return (
 		<div className="desk-notice">
 			<p>{reason}</p>
-			<a className="desk-pill" href="/trips/">
+			<a className="deco-tag desk-pill" href="/trips/">
 				See every trip as a list
 			</a>
 		</div>

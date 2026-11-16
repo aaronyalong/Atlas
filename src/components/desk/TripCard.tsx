@@ -22,13 +22,15 @@ export function TripCard({ trip, onClose }: { trip: DeskTrip; onClose: () => voi
 			<button ref={closeRef} type="button" className="trip-card-close" onClick={onClose} aria-label="Close">
 				×
 			</button>
-			<p className="trip-card-place">{trip.place}</p>
+			<p className="trip-card-place">
+				<span>{trip.place}</span>
+			</p>
 			<h2 id={titleId} className="trip-card-title">
 				{trip.title}
 			</h2>
 			<p className="trip-card-dates">{trip.dates ?? <span className="todo">TODO: dates</span>}</p>
 			<p className="trip-card-blurb">{trip.blurb ?? <span className="todo">TODO: blurb</span>}</p>
-			<a className="trip-card-open" href={trip.href}>
+			<a className="deco-tag trip-card-open" href={trip.href}>
 				Open trip <span aria-hidden="true">→</span>
 			</a>
 		</article>

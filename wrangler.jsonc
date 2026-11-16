@@ -1,7 +1,7 @@
 // Cloudflare Workers with static assets: serves the static Astro build from dist/. The same setup
 // as the portfolio (Portfolio/wrangler.jsonc): no Worker code (no "main") and no Astro adapter.
-// Cloudflare builds with `npm run build:deploy` (fails on visible TODOs, broken internal links or
-// image metadata) and then runs `npx wrangler deploy`.
+// Cloudflare builds with `npm run build:deploy` (lists visible TODOs; fails on broken internal links
+// or image metadata) and then runs `npx wrangler deploy`.
 {
 	"name": "atlas",
 	"compatibility_date": "2026-11-15",

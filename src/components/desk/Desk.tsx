@@ -12,7 +12,7 @@ import { RepeatWrapping, SRGBColorSpace, type Texture } from 'three';
 export const DESK = { width: 8.8, depth: 4.5, thickness: 0.045, centerZ: 1.35 } as const;
 
 /**
- * ambientCG "Wood051" (CC0), re-encoded to 1024px WebP; see /credits. One tile is about 1 m. The
+ * ambientCG "Wood051" (CC0), re-encoded to 1024px WebP (see the README). One tile is about 1 m. The
  * colour map is graded from the original walnut to a smoked oak: most of the colour taken out and
  * a cool cast added, so the desk sits with the graphite room and the navy map.
  */
@@ -35,7 +35,7 @@ const WOOD = {
  * default), or the lighting maths reads them wrong and the wood turns to plastic.
  *
  * On desktop the lacquer reflects: a second, mirrored camera draws the room from below the desk
- * each frame, and that picture is blurred and laid into the top, so Earth, the viewport's blue
+ * each frame, and that picture is blurred and laid into the top, so Earth, the viewport's gold
  * strip and the lamp shimmer in the wood. Phones skip it (it draws the scene twice).
  */
 export function Desk({
@@ -107,7 +107,7 @@ export function Desk({
 						resolution={1024}
 						blur={[500, 160]}
 						mixBlur={1}
-						mixStrength={2.2}
+						mixStrength={1.3}
 						mixContrast={1}
 						mirror={0}
 						// Fade the reflection out with distance from the desk, as a lacquer's does.

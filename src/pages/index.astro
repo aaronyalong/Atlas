@@ -35,7 +35,7 @@ const webp = async (src: ImageMetadata) => (await getImage({ src, width: 900, fo
 
 const deskTrips: DeskTrip[] = await Promise.all(
 	(await getTrips()).map(async (trip) => {
-		const { title, place, blurb, cover, coverAlt, photos, lat, lng } = trip.data;
+		const { title, place, blurb, cover, coverAlt, photos, lat, lng, timeZone } = trip.data;
 		const map = locate(sheet, lat, lng);
 		if (!map) console.warn(`${trip.id} (${lat}, ${lng}) is outside the map's crop; it gets no pin. Widen the crop in src/lib/map/config.ts.`);
 		const prints = [
@@ -51,6 +51,7 @@ const deskTrips: DeskTrip[] = await Promise.all(
 			href: tripHref(trip),
 			photos: prints,
 			map,
+			timeZone: timeZone ?? null,
 		};
 	}),
 );
@@ -62,7 +63,7 @@ const deskTrips: DeskTrip[] = await Promise.all(
 			<h1>Travel</h1>
 			<a href={PORTFOLIO_URL}>by Aaron Yalong</a>
 		</div>
-		<a class="desk-pill" href="/trips/">Skip the 3D <span aria-hidden="true">→</span></a>
+		<a class="deco-tag desk-pill" href="/trips/">Skip the 3D <span aria-hidden="true">→</span></a>
 	</header>
 
 	<main class="desk-stage">
@@ -80,7 +81,7 @@ const deskTrips: DeskTrip[] = await Promise.all(
 			</style>
 			<div class="desk-notice">
 				<p>The 3D desk needs JavaScript.</p>
-				<a class="desk-pill" href="/trips/">See every trip as a list</a>
+				<a class="deco-tag desk-pill" href="/trips/">See every trip as a list</a>
 			</div>
 		</noscript>
 	</main>

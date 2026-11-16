@@ -37,7 +37,8 @@ const pins = trips
 	.map(([u, v]) => {
 		const x = (u * mapW).toFixed(1);
 		const y = (v * mapH).toFixed(1);
-		return `<circle cx="${x}" cy="${y}" r="16" fill="none" stroke="#5b8cff" stroke-opacity="0.45" stroke-width="2"/><circle cx="${x}" cy="${y}" r="8" fill="#5b8cff" stroke="#fff" stroke-width="2"/><circle cx="${x - 2.5}" cy="${y - 2.5}" r="2.5" fill="#fff" opacity="0.6"/>`;
+		// Brass pins with a gold ripple, as on the desk.
+		return `<circle cx="${x}" cy="${y}" r="16" fill="none" stroke="#e8b85c" stroke-opacity="0.5" stroke-width="2"/><circle cx="${x}" cy="${y}" r="8" fill="#c29a4b" stroke="#6f4f1d" stroke-width="1.5"/><circle cx="${x - 2.5}" cy="${y - 2.5}" r="2.5" fill="#fff1c9" opacity="0.8"/>`;
 	})
 	.join('');
 

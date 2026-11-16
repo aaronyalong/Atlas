@@ -43,10 +43,11 @@ export interface Framing {
 
 /**
  * Where the point the camera orbits may be slid to (right-drag or two fingers, and zooming in
- * toward the cursor): over the map, never off it. Kept narrow enough that, zoomed out and swung
- * round, the camera stays inside the room.
+ * toward the cursor): over the map, back to the wall (so you can zoom in on the lamp and the
+ * gauge panel), never off the desk. Kept narrow enough that, swung right round, the camera stays
+ * inside the room.
  */
-export const TARGET_BOUNDS = { min: [-1.3, -0.01, -0.75] as const, max: [1.3, 0.7, 0.8] as const };
+export const TARGET_BOUNDS = { min: [-1.6, -0.01, -0.9] as const, max: [1.6, 0.7, 0.8] as const };
 
 /** An opened place is viewed from the front, looking down at 45° (its photos tip up to match). */
 export const FOCUS_POLAR = deg(45);
@@ -58,8 +59,8 @@ export const FOCUS_POLAR = deg(45);
  * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
  * game". On a wide screen the camera looks down across the desk at 52°; the 3 m map runs edge to
  * edge (a little past the sides on a 16:10 screen) and down to just above the bottom, with the
- * lamp behind its back-left corner and the viewport (and Earth) across the top. Zooming out
- * shows the whole sheet. A tall phone screen can't
+ * lamp behind its back-left corner and the viewport (and Earth) across the top. That's about as
+ * far out as the camera goes; zoom and slide to explore the map. A tall phone screen can't
  * show the map across at a readable size, so it frames the stretch the trips cover (East Asia to
  * the US, near the middle of the Pacific-centred map) and lets the rest run off the sides: drag
  * or zoom out to see it all.
@@ -87,10 +88,10 @@ export function framingFor(aspect: number): Framing {
 			ty + Math.cos(polar) * distance,
 			tz + Math.cos(azimuth) * horizontal,
 		],
-		// Close enough to read the map's coastlines; not so far the desk is lost in the room (or,
-		// at the steepest angle, the camera goes up through the ceiling: see Room.tsx).
+		// In close enough to read the map's coastlines; out barely past the starting view, which
+		// already frames the map (any further and the desk turns into a sea of empty wood).
 		minDistance: portrait ? 0.7 : 0.45,
-		maxDistance: distance * 1.25,
+		maxDistance: distance * 1.05,
 	};
 }
 

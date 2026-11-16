@@ -22,7 +22,10 @@ export const PALETTE = {
 	/** The room: dark graphite wall panels, and the darker seams between them. */
 	wall: '#2a2e34',
 	seam: '#0e0f11',
-	/** The portfolio accent (#2f5bd3), as light: the strip around the viewport. Bright, but not
-	 *  so bright that tone mapping washes it out to white. */
-	accentLight: [0.22, 0.48, 2.3] as [number, number, number],
+	/** Dark oiled bronze: the viewport's frame and the gauge panel. */
+	bronze: '#3a2c1d',
+	/** The viewport's gold cove light, as light: brighter than white, so it blooms. */
+	goldLight: [3.2, 1.95, 0.6] as [number, number, number],
+	/** Its glow washing down the bronze beside it (added on top). */
+	goldWash: [0.55, 0.32, 0.09] as [number, number, number],
 } as const;

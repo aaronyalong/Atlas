@@ -2,8 +2,10 @@
 /**
  * (Same check as the portfolio's scripts/check-todos.mjs.)
  *
- * Fails if any built page shows a visible "TODO" placeholder, so unfinished content can't
- * be deployed. Run after `astro build` (`npm run build:deploy` does both).
+ * Fails if any built page shows a visible "TODO" placeholder. Run after `astro build`.
+ *
+ * With --warn it lists them and passes: `npm run build:deploy` uses that, so the site can go live
+ * with placeholders and fill in as trips are written. Run `npm run check:todos` to see what's left.
  *
  * Scans the rendered HTML in dist/ rather than the sources, so it sees exactly what a
  * visitor would: code comments and HTML comments never trigger it.
@@ -12,6 +14,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const warnOnly = process.argv.includes('--warn');
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
 
@@ -46,6 +49,7 @@ if (found.length === 0) {
 	process.exit(0);
 }
 
-console.error(`✗ ${found.length} visible TODO(s) in ${relative(root, dist)}/:`);
-for (const { page, text } of found) console.error(`  ${page}: ${text}`);
-process.exit(1);
+const log = warnOnly ? console.warn : console.error;
+log(`${warnOnly ? '!' : '✗'} ${found.length} visible TODO(s) in ${relative(root, dist)}/:`);
+for (const { page, text } of found) log(`  ${page}: ${text}`);
+process.exit(warnOnly ? 0 : 1);

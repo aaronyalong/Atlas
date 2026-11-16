@@ -1,38 +1,57 @@
 ---
 /**
- * "Skip the 3D": every trip as a plain list, for screen readers, slow phones and search engines.
- * Built from the trips collection, so a new trip file shows up here automatically.
+ * "Skip the 3D": every trip without the desk, for screen readers, slow phones and search
+ * engines. Each trip is a polaroid (the cover photo, its name handwritten underneath) with the
+ * place, dates and blurb below, laid out like prints pinned along a wall. Built from the trips
+ * collection, so a new trip file shows up here automatically.
  */
 import { Image } from 'astro:assets';
+import '@fontsource/caveat/600.css';
 import PageLayout from '../../layouts/PageLayout.astro';
-import { formatTripDates, getTrips, tripHref, tripName } from '../../lib/trips';
+import { formatTripDates, getTrips, tripHref } from '../../lib/trips';
 
 const trips = await getTrips();
+// Small deterministic tilts, so the prints look placed by hand rather than on a grid.
+const tilt = (i: number) => [-2.4, 1.8, -1.2, 2.2, -1.6, 1.1][i % 6];
 ---
 
-<PageLayout title="All trips" description="Every trip in Aaron Yalong's travel scrapbook, as a plain list.">
-	<h1>All trips</h1>
-	<p class="lede">The whole scrapbook as a plain list, without the 3D desk.</p>
+<PageLayout title="All trips" description="Every trip in Aaron Yalong's travel scrapbook, without the 3D desk.">
+	<header class="head">
+		<p class="caps eyebrow">The scrapbook</p>
+		<h1>All trips</h1>
+		<div class="deco-rule" aria-hidden="true"><span></span></div>
+		<p class="lede">Every place on the map, without the 3D desk.</p>
+	</header>
+
 	<ul class="trips">
 		{
-			trips.map((trip) => {
+			trips.map((trip, i) => {
 				const dates = formatTripDates(trip);
 				return (
-					<li>
-						{trip.data.cover && (
-							<Image class="thumb" src={trip.data.cover} alt="" width={160} height={120} fit="cover" />
-						)}
-						<a class="name" href={tripHref(trip)}>
-							{tripName(trip)}
+					<li style={`--tilt: ${tilt(i)}deg`}>
+						{/* The print is a second, mouse-only way in: the title below is the link for keyboards
+						    and screen readers. */}
+						<a class="print" href={tripHref(trip)} tabindex="-1" aria-hidden="true">
+							<span class="pin" aria-hidden="true" />
+							{trip.data.cover ? (
+								<Image class="photo" src={trip.data.cover} alt="" width={560} height={560} fit="cover" />
+							) : (
+								<span class="photo placeholder">
+									<span class="todo">TODO: cover photo</span>
+								</span>
+							)}
+							<span class="caption" aria-hidden="true">
+								{trip.data.title}
+							</span>
 						</a>
-						{dates ? <span class="dates">{dates}</span> : <span class="todo">TODO: dates</span>}
-						{trip.data.blurb ? (
-							<p class="blurb">{trip.data.blurb}</p>
-						) : (
-							<p class="blurb">
-								<span class="todo">TODO: blurb</span>
-							</p>
-						)}
+						<div class="details">
+							<p class="caps place">{trip.data.place}</p>
+							<h2>
+								<a href={tripHref(trip)}>{trip.data.title}</a>
+							</h2>
+							<p class="caps dates">{dates ?? <span class="todo">TODO: dates</span>}</p>
+							<p class="blurb">{trip.data.blurb ?? <span class="todo">TODO: blurb</span>}</p>
+						</div>
 					</li>
 				);
 			})
@@ -41,46 +60,146 @@ const trips = await getTrips();
 </PageLayout>
 
 <style>
+	.head {
+		max-width: 36rem;
+		margin-inline: auto;
+		text-align: center;
+	}
+
+	.eyebrow {
+		color: var(--gold);
+		font-size: 0.75rem;
+	}
+
+	h1 {
+		margin-block: var(--space-2) var(--space-4);
+		color: var(--ivory);
+		font-size: clamp(2.6rem, 7vw, 4rem);
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+	}
+
 	.lede {
-		margin-top: var(--space-2);
-		color: var(--color-text-muted);
+		margin-top: var(--space-4);
+		color: color-mix(in srgb, var(--ivory) 70%, transparent);
 	}
 
 	.trips {
-		max-width: var(--prose-width);
-		margin-top: var(--space-8);
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr));
+		gap: var(--space-16) var(--space-12);
+		margin-top: var(--space-16);
 		padding: 0;
 		list-style: none;
 	}
 
 	.trips li {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-2) var(--space-4);
-		padding-block: var(--space-4);
-		border-bottom: 1px solid var(--color-border);
+		display: grid;
+		gap: var(--space-6);
+		justify-items: center;
+		text-align: center;
 	}
 
-	.name {
-		font-weight: 600;
+	/* A polaroid, pinned at the top with a brass pin. */
+	.print {
+		position: relative;
+		display: block;
+		width: min(100%, 17rem);
+		padding: 0.75rem 0.75rem 0;
+		background: #fbfaf6;
+		box-shadow:
+			0 1px 1px rgb(0 0 0 / 0.3),
+			0 18px 36px -14px rgb(0 0 0 / 0.8);
+		color: var(--ink);
+		text-decoration: none;
+		transform: rotate(var(--tilt));
 	}
 
-	/* Decorative: the link text says where it goes, so the thumbnail has empty alt. */
-	.thumb {
-		width: 4rem;
-		height: 3rem;
+	.pin {
+		position: absolute;
+		z-index: 1;
+		top: -7px;
+		left: calc(50% - 7px);
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: radial-gradient(circle at 35% 30%, #fff1c9, #c9a45c 45%, #6f4f1d);
+		box-shadow: 0 3px 4px rgb(0 0 0 / 0.5);
+	}
+
+	.photo {
+		display: block;
+		width: 100%;
+		height: auto;
+		aspect-ratio: 1;
 		object-fit: cover;
-		border-radius: 3px;
+	}
+
+	.placeholder {
+		display: grid;
+		place-items: center;
+		background:
+			radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.12), transparent 60%),
+			linear-gradient(180deg, var(--navy), #2a3b55);
+	}
+
+	.placeholder .todo {
+		border-color: rgb(255 255 255 / 0.8);
+		color: #fff;
+	}
+
+	.caption {
+		display: block;
+		padding: 0.55rem 0 0.8rem;
+		font-family: var(--font-hand);
+		font-size: 1.7rem;
+		font-weight: 600;
+		line-height: 1.1;
+	}
+
+	.details {
+		max-width: 19rem;
+	}
+
+	.place {
+		color: var(--gold);
+		font-size: 0.72rem;
+	}
+
+	h2 {
+		margin-top: var(--space-2);
+		font-size: 1.7rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+	}
+
+	h2 a {
+		color: var(--ivory);
+		text-decoration: none;
+	}
+
+	h2 a:hover {
+		color: var(--gold-bright);
 	}
 
 	.dates {
-		color: var(--color-text-muted);
-		font-size: var(--text-sm);
+		margin-top: var(--space-2);
+		color: color-mix(in srgb, var(--ivory) 60%, transparent);
+		font-size: 0.72rem;
 	}
 
 	.blurb {
-		flex-basis: 100%;
+		margin-top: var(--space-3);
+		color: color-mix(in srgb, var(--ivory) 85%, transparent);
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.print {
+			transition: transform 0.3s var(--ease-out);
+		}
+
+		.print:hover {
+			transform: rotate(0deg) translateY(-4px);
+		}
 	}
 </style>

@@ -1,44 +1,26 @@
-import { RoundedBox, useTexture } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Object3D, Quaternion, RepeatWrapping, SRGBColorSpace, Vector3, type InstancedMesh, type Texture, type Vector3Tuple } from 'three';
+import { Matrix4, Object3D, Quaternion, RepeatWrapping, SRGBColorSpace, Vector3, type InstancedMesh, type Texture, type Vector3Tuple } from 'three';
 import { PALETTE } from './palette';
+import { CEILING_Y, FLOOR_Y, FRAME, FRONT_Z, GLASS_Z, OPENING, SIDE_X, STRUT, SUN_POSITION, WALL_THICKNESS, WALL_Z, WINDOW } from './roomLayout';
 import { SpaceView, type EarthTextures } from './SpaceView';
 import { SunBeam, type BeamWindow } from './SunBeam';
+import { BRASS, Viewport } from './Viewport';
 
 /*
- * The room around the desk: an observation deck on a station in orbit. A closed room lined with
- * dark graphite panels, and one broad viewport centred in the back wall, set deep in a flared
- * recess edged with a strip of blue light, looking down at Earth (SpaceView.tsx). The desk runs
- * wall to wall in front of it, like a console.
+ * The room around the desk: an observation deck on a station in orbit, fitted out art deco. A
+ * closed room lined with dark graphite panels trimmed in brass, and one broad viewport centred in
+ * the back wall, in a bronze-and-brass recess lit by a gold cove light (Viewport.tsx), looking
+ * down at Earth (SpaceView.tsx). The desk runs wall to wall in front of it, like a console; the
+ * gauge panel beside the window is Gauges.tsx.
  *
  * Light: sunlight pouring in through the viewport (casting the frame's shadow across the desk),
- * a soft light from a recessed fitting high in the ceiling, the banker's lamp on the desk
- * (BankersLamp.tsx), and a little blue earthlight coming up from the planet below the window.
+ * a soft light from a recessed fitting high in the ceiling, warm wall-washers, the banker's lamp
+ * on the desk (BankersLamp.tsx), and a little blue earthlight coming up from the planet below.
  *
- * Layout (metres; desk top at y = 0, +z toward the viewer): the wall's face is at WALL_Z, the
- * floor at FLOOR_Y, the ceiling at CEILING_Y, the side walls at ±SIDE_X. The room is sized so
- * the camera can't leave it: zoomed right out at the steepest angle it stays under the ceiling,
- * and swung round to either side it stays inside the side walls (see camera.ts).
+ * The measurements are in roomLayout.ts.
  */
-export const WALL_Z = -0.9;
-export const FLOOR_Y = -0.75;
-export const CEILING_Y = 4.2;
-export const SIDE_X = 4.4;
-const FRONT_Z = 5.6;
-const WALL_THICKNESS = 0.26;
-/** The glass, at the back of the recess. */
-const WINDOW = { left: -1.05, right: 1.05, bottom: 0.04, top: 1.5 };
-/** The recess: how deep the glass sits behind the wall's face, and how far the sides and top
- *  splay out toward the room. The bottom is a flat sill, level with the glass. */
-const RECESS = { depth: 0.22, flare: 0.14 };
-/** The opening in the wall's face. */
-const OPENING = { left: WINDOW.left - RECESS.flare, right: WINDOW.right + RECESS.flare, bottom: WINDOW.bottom, top: WINDOW.top + RECESS.flare };
-const GLASS_Z = WALL_Z - RECESS.depth;
-/** The viewport frame's width, and its two struts (centred a sixth of the way either side). */
-const FRAME = 0.07;
-const STRUT = 0.035;
-/** Where the sunlight comes from: high behind the wall, a little to the left. */
-const SUN_POSITION: Vector3Tuple = [-0.5, 2.6, WALL_Z - 2];
+
 const BEAM_WINDOW: BeamWindow = { ...WINDOW, z: GLASS_Z, frame: FRAME, struts: [1 / 3, 2 / 3], strutWidth: STRUT };
 
 const WOOD = {
@@ -72,9 +54,8 @@ export function Room({ shadows, shadowMapSize, earthTextures, skyEvents, reduced
 		<group>
 			<Shell wood={floorWood} shadows={shadows} />
 			<Panels />
-			<Recess shadows={shadows} />
-			<Viewport />
-			<StatusPanel />
+			<Viewport shadows={shadows} />
+			<Skirting />
 			<SpaceView textures={earthTextures} reducedMotion={reducedMotion} events={skyEvents} />
 			<Sunlight shadows={shadows} shadowMapSize={shadowMapSize} />
 			<SunBeam sun={SUN_POSITION} window={BEAM_WINDOW} steps={lite ? 0 : 24} motes={lite ? 60 : 150} reducedMotion={reducedMotion} />
@@ -193,146 +174,6 @@ function Panels() {
 	);
 }
 
-/** A flat quad through four corners (in order round the edge). */
-function quad(points: Vector3Tuple[]): BufferGeometry {
-	const g = new BufferGeometry();
-	g.setAttribute('position', new Float32BufferAttribute(points.flat(), 3));
-	g.setIndex([0, 1, 2, 0, 2, 3]);
-	g.computeVertexNormals();
-	return g;
-}
-
-/**
- * The recess: the wall is thick here, and the opening splays out from the glass toward the room,
- * so the viewport reads as a heavy port in a hull rather than a hole. A flat sill along the
- * bottom, and a strip of light (the portfolio's blue) all the way round the opening's edge.
- */
-function Recess({ shadows }: { shadows: boolean }) {
-	const o = OPENING;
-	const w = WINDOW;
-	const faces = useMemo(
-		() => [
-			quad([[o.left, o.bottom, WALL_Z], [o.left, o.top, WALL_Z], [w.left, w.top, GLASS_Z], [w.left, w.bottom, GLASS_Z]]),
-			quad([[o.right, o.bottom, WALL_Z], [w.right, w.bottom, GLASS_Z], [w.right, w.top, GLASS_Z], [o.right, o.top, WALL_Z]]),
-			quad([[o.left, o.top, WALL_Z], [o.right, o.top, WALL_Z], [w.right, w.top, GLASS_Z], [w.left, w.top, GLASS_Z]]),
-			quad([[o.left, o.bottom, WALL_Z], [w.left, w.bottom, GLASS_Z], [w.right, w.bottom, GLASS_Z], [o.right, o.bottom, WALL_Z]]),
-		],
-		[o, w],
-	);
-	const S = 0.008; // strip thickness
-	const z = WALL_Z - 0.006;
-	const height = o.top - o.bottom;
-	const width = o.right - o.left;
-	return (
-		<group>
-			{faces.map((geometry, i) => (
-				<mesh key={i} geometry={geometry} castShadow={shadows} receiveShadow>
-					<meshStandardMaterial color="#2a2d33" metalness={0.55} roughness={0.42} side={DoubleSide} />
-				</mesh>
-			))}
-			{/* The light strip, just inside the opening's edge. */}
-			{[
-				[o.left + S / 2, o.bottom + height / 2, S, height],
-				[o.right - S / 2, o.bottom + height / 2, S, height],
-				[0, o.top - S / 2, width, S],
-				[0, o.bottom + S / 2, width, S],
-			].map(([x, y, sw, sh], i) => (
-				<mesh key={i} position={[x, y, z]}>
-					<boxGeometry args={[sw, sh, S]} />
-					<meshBasicMaterial color={PALETTE.accentLight} toneMapped={false} />
-				</mesh>
-			))}
-		</group>
-	);
-}
-
-/**
- * The viewport: a broad pane in a thick gunmetal frame with bevelled edges, two slim struts, and
- * rows of bolts, at the back of the recess. The glass is barely there.
- */
-function Viewport() {
-	const { left, right, bottom, top } = WINDOW;
-	const w = right - left;
-	const h = top - bottom;
-	const cx = (left + right) / 2;
-	const cy = (bottom + top) / 2;
-	const z = GLASS_Z;
-	const F = FRAME;
-	const gunmetal = <meshStandardMaterial color="#1a1c20" metalness={0.75} roughness={0.38} />;
-	const bolts: [number, number][] = [];
-	for (let i = 0; i <= 12; i++) {
-		const x = left + F / 2 + (i * (w - F)) / 12;
-		bolts.push([x, bottom + F / 2], [x, top - F / 2]);
-	}
-	for (let i = 1; i < 6; i++) {
-		const y = bottom + F / 2 + (i * (h - F)) / 6;
-		bolts.push([left + F / 2, y], [right - F / 2, y]);
-	}
-	return (
-		<group>
-			{[
-				[cx, bottom + F / 2, w, F],
-				[cx, top - F / 2, w, F],
-				[left + F / 2, cy, F, h],
-				[right - F / 2, cy, F, h],
-			].map(([x, y, bw, bh], i) => (
-				<RoundedBox key={i} args={[bw, bh, 0.06]} radius={0.012} smoothness={3} position={[x, y, z]} castShadow receiveShadow>
-					{gunmetal}
-				</RoundedBox>
-			))}
-			{[-1, 1].map((s) => (
-				<RoundedBox key={s} args={[STRUT, h - F, 0.05]} radius={0.01} smoothness={3} position={[cx + (s * w) / 6, cy, z - 0.005]} castShadow>
-					{gunmetal}
-				</RoundedBox>
-			))}
-			{bolts.map(([x, y], i) => (
-				<mesh key={i} position={[x, y, z + 0.032]} rotation={[Math.PI / 2, 0, 0]}>
-					<cylinderGeometry args={[0.006, 0.006, 0.006, 6]} />
-					<meshStandardMaterial color="#3a3d43" metalness={0.9} roughness={0.3} />
-				</mesh>
-			))}
-			{/* Glass: barely there, but it catches reflections. */}
-			<mesh position={[cx, cy, z - 0.02]}>
-				<planeGeometry args={[w, h]} />
-				<meshPhysicalMaterial color="#9fb6c8" transparent opacity={0.06} roughness={0.04} metalness={0} depthWrite={false} />
-			</mesh>
-		</group>
-	);
-}
-
-/**
- * A small status plate on the wall to the right of the viewport: a dark plate with a column of
- * indicator lights, the kind a station has beside every port. Purely decoration.
- */
-function StatusPanel() {
-	const x = OPENING.right + 0.26;
-	const lights: [number, [number, number, number]][] = [
-		[0.06, [0.4, 3.2, 1.0]],
-		[0.02, [0.4, 3.2, 1.0]],
-		[-0.02, [0.4, 3.2, 1.0]],
-		[-0.06, [3.4, 1.6, 0.2]],
-	];
-	return (
-		<group position={[x, 0.42, WALL_Z + 0.018]}>
-			<RoundedBox args={[0.09, 0.2, 0.012]} radius={0.004} smoothness={2} position={[0, 0, 0.006]}>
-				<meshStandardMaterial color="#111215" metalness={0.5} roughness={0.5} />
-			</RoundedBox>
-			{lights.map(([y, colour], i) => (
-				<mesh key={i} position={[-0.018, y, 0.013]}>
-					<circleGeometry args={[0.0045, 16]} />
-					<meshBasicMaterial color={colour} toneMapped={false} />
-				</mesh>
-			))}
-			{lights.map(([y], i) => (
-				<mesh key={`l${i}`} position={[0.016, y, 0.0125]}>
-					<planeGeometry args={[0.032, 0.004]} />
-					<meshBasicMaterial color="#3a3e46" />
-				</mesh>
-			))}
-		</group>
-	);
-}
-
 /**
  * Sunlight through the viewport: a cool white light from high behind the wall. A spotlight with
  * no fall-off rather than a directional light, so its cone stops at the window: it lights only
@@ -365,8 +206,27 @@ function Sunlight({ shadows, shadowMapSize }: { shadows: boolean; shadowMapSize:
 }
 
 /**
- * Wall-washers: a soft, cool light from the ceiling either side of the viewport, falling down the
- * wall at a grazing angle so the panels' edges and seams show. No shadows (cheap).
+ * A brass skirting where the wall meets the desk, either side of the window: it ties the wall's
+ * brass (the window, the gauges) to the lamp's.
+ */
+function Skirting() {
+	return (
+		<group>
+			{[
+				[-SIDE_X, OPENING.left - 0.03],
+				[OPENING.right + 0.03, SIDE_X],
+			].map(([x0, x1]) => (
+				<mesh key={x0} position={[(x0 + x1) / 2, 0.012, WALL_Z + 0.022]} material={BRASS}>
+					<boxGeometry args={[x1 - x0, 0.024, 0.012]} />
+				</mesh>
+			))}
+		</group>
+	);
+}
+
+/**
+ * Wall-washers: a soft, warm light from the ceiling either side of the viewport, falling down the
+ * wall at a grazing angle so the panels' edges and seams (and the brass) show. No shadows (cheap).
  */
 function WallWashers() {
 	const [targets] = useState(() => [new Object3D(), new Object3D()]);
@@ -375,7 +235,7 @@ function WallWashers() {
 			{[-1, 1].map((side, i) => (
 				<group key={side}>
 					<primitive object={targets[i]} position={[side * 1.75, 0.4, WALL_Z]} />
-					<spotLight position={[side * 1.75, 2.95, WALL_Z + 0.5]} target={targets[i]} color="#cdd8ff" intensity={8} decay={2} angle={0.8} penumbra={1} />
+					<spotLight position={[side * 1.75, 2.95, WALL_Z + 0.5]} target={targets[i]} color="#ffdcb0" intensity={7} decay={2} angle={0.8} penumbra={1} />
 				</group>
 			))}
 		</>

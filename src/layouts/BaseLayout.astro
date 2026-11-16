@@ -4,6 +4,10 @@
  * previews) and an empty <body>. The 3D desk page fills the body itself; 2D pages use
  * PageLayout on top of this.
  */
+import '@fontsource/josefin-sans/400.css';
+import '@fontsource/josefin-sans/600.css';
+import '@fontsource/josefin-sans/700.css';
+import '@fontsource/poiret-one/400.css';
 import '../styles/global.css';
 import { SITE_DESCRIPTION, SITE_NAME } from '../lib/site';
 
@@ -24,7 +28,7 @@ interface Props {
 
 const HOME_CARD = {
 	src: '/og/home.jpg',
-	alt: "An old-style world map on a dark desk, with blue pins on the places in Aaron Yalong's travel scrapbook",
+	alt: "An old-style world map on a dark desk, with brass pins on the places in Aaron Yalong's travel scrapbook",
 };
 
 const { title, description = SITE_DESCRIPTION, bodyClass, image = HOME_CARD, type = 'website' } = Astro.props;

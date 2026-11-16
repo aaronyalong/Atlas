@@ -24,7 +24,7 @@ import { seededRandom } from './polaroidTexture';
  * The view through the viewport: the desk is on a station in orbit, and outside is space.
  *
  *   - Earth, below and ahead: Solar System Scope's day, night-lights and cloud maps (made from
- *     NASA imagery; CC BY 4.0, credited on /credits), on a sphere with its own shader: sunlit day
+ *     NASA imagery; CC BY 4.0, credited on the desk and in the 2D pages' footer), on a sphere with its own shader: sunlit day
  *     side with sun glint off the oceans, city lights glowing across the night side, clouds over
  *     both, a warm band at the terminator, and a blue atmospheric rim. It turns slowly, and the
  *     clouds drift.

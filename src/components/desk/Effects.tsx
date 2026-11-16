@@ -40,7 +40,7 @@ export function Effects({ profile, focus, target }: EffectsProps) {
 			{mobile ? (
 				<></>
 			) : (
-				<DepthOfField target={focus ?? target} worldFocusRange={focus ? 0.5 : 1.4} bokehScale={focus ? 3 : 1.4} />
+				<DepthOfField target={focus ?? target} worldFocusRange={focus ? 0.5 : 2.2} bokehScale={focus ? 3 : 1.4} />
 			)}
 			{/* Threshold well above 1: only things drawn far brighter than white bloom (the ceiling
 			    light's fitting, the rocket's flame, a shooting star); a highlight on glossy paper

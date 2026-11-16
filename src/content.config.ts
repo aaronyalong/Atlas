@@ -20,6 +20,21 @@ const trips = defineCollection({
 			/** For the map pin (phase 3): decimal degrees, north and east positive. */
 			lat: z.number().min(-90).max(90),
 			lng: z.number().min(-180).max(180),
+			/**
+			 * The place's IANA time zone (e.g. Asia/Tokyo), for its world clock on the desk's gauge
+			 * panel. Optional: a trip without one just gets no clock.
+			 */
+			timeZone: z
+				.string()
+				.refine((zone) => {
+					try {
+						new Intl.DateTimeFormat('en', { timeZone: zone });
+						return true;
+					} catch {
+						return false;
+					}
+				}, 'Not a time zone Intl knows (use an IANA name like Asia/Tokyo).')
+				.optional(),
 			/** YYYY-MM-DD. `end` can be left out for a one-day trip. */
 			start: z.coerce.date().optional(),
 			end: z.coerce.date().optional(),

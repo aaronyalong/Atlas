@@ -1,8 +1,9 @@
 ---
 /**
- * One trip's scrapbook page: a sheet of cream paper with the cover photo taped on, a postage-
- * stamp locator cut from the desk's map, the blurb, the journal text on lined paper, and the
- * rest of the photos as taped prints with handwritten captions. Then on to the next trip.
+ * One trip's scrapbook page: a sheet of ivory card framed in gold (the desk's art deco), with the
+ * cover photo taped on as a polaroid, a postage-stamp locator cut from the desk's map, the blurb,
+ * the journal with a deco drop cap, and the rest of the photos as taped polaroids with
+ * handwritten captions. Then on to the next trip.
  *
  * Anything not written yet shows as a visible TODO (the deploy check refuses to ship those).
  * Every photo goes through astro:assets, which re-encodes it and strips EXIF/GPS metadata; the
@@ -65,9 +66,10 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 >
 	<article class="sheet">
 		<header class="head">
-			<p class="place">{place}</p>
+			<p class="caps place"><span>{place}</span></p>
 			<h1>{title}</h1>
-			<p class="dates">{dates ?? <span class="todo">TODO: dates</span>}</p>
+			<p class="caps dates">{dates ?? <span class="todo">TODO: dates</span>}</p>
+			<div class="deco-rule" aria-hidden="true"><span></span></div>
 		</header>
 
 		<div class="lead">
@@ -138,60 +140,98 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 	</article>
 
 	<nav class="pager" aria-label="More trips">
-		<a href={tripHref(previous)} rel="prev"><span aria-hidden="true">←</span> {tripName(previous)}</a>
-		<a href={tripHref(next)} rel="next">{tripName(next)} <span aria-hidden="true">→</span></a>
+		<a class="deco-tag" href={tripHref(previous)} rel="prev"><span aria-hidden="true">←</span> {tripName(previous)}</a>
+		<a class="deco-tag" href={tripHref(next)} rel="next">{tripName(next)} <span aria-hidden="true">→</span></a>
 	</nav>
 </PageLayout>
 
 <style>
-	/* The page itself: a sheet of cream card stock in both themes, like the cards on the desk. */
+	/* The page itself: a sheet of ivory card stock, framed with a double gold rule like a deco menu
+	   card. Light inside, on the dark room. */
 	.sheet {
 		--ink: #2a2622;
 		--muted: #6b6259;
-		--color-accent: #2f5bd3;
+		--color-accent: var(--gold-ink);
+		--color-accent-hover: #5e4214;
 		--color-text-muted: var(--muted);
 		position: relative;
 		max-width: 60rem;
 		margin-inline: auto;
-		padding: clamp(1.5rem, 5vw, 3.5rem);
+		padding: clamp(2.25rem, 6vw, 4.5rem) clamp(1.5rem, 6vw, 4rem);
 		background:
 			radial-gradient(circle at 20% 10%, rgb(255 255 255 / 0.5), transparent 55%),
 			radial-gradient(circle at 90% 95%, rgb(120 90 50 / 0.08), transparent 50%),
-			#f4ecdc;
-		border-radius: 3px;
-		box-shadow:
-			0 1px 2px rgb(0 0 0 / 0.12),
-			0 24px 48px -24px rgb(0 0 0 / 0.45);
+			var(--paper);
+		box-shadow: 0 30px 60px -24px rgb(0 0 0 / 0.8);
 		color: var(--ink);
 		color-scheme: light;
 	}
 
+	.sheet::before,
+	.sheet::after {
+		content: '';
+		position: absolute;
+		pointer-events: none;
+	}
+
+	.sheet::before {
+		inset: 12px;
+		border: 1.5px solid var(--gold-ink);
+	}
+
+	.sheet::after {
+		inset: 19px;
+		border: 1px solid color-mix(in srgb, var(--gold-ink) 55%, transparent);
+		clip-path: polygon(18px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 18px), calc(100% - 18px) 100%, 18px 100%, 0 calc(100% - 18px), 0 18px);
+	}
+
+	.head {
+		text-align: center;
+	}
+
+	/* The place between two gold rules. */
 	.place {
-		color: var(--muted);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		color: var(--gold-ink);
+		font-size: 0.78rem;
+	}
+
+	.place::before,
+	.place::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: currentColor;
+		opacity: 0.55;
 	}
 
 	h1 {
-		margin-top: var(--space-1);
-		font-family: 'Caveat', cursive;
-		font-size: clamp(3rem, 9vw, 5rem);
-		font-weight: 600;
-		line-height: 1;
+		margin-top: var(--space-4);
+		font-size: clamp(2.4rem, 7vw, 4.25rem);
+		letter-spacing: 0.12em;
+		line-height: 1.05;
+		text-transform: uppercase;
 	}
 
 	.dates {
-		margin-top: var(--space-2);
+		margin-top: var(--space-4);
 		color: var(--muted);
+		font-size: 0.8rem;
+	}
+
+	.head .deco-rule {
+		max-width: 16rem;
+		margin: var(--space-6) auto 0;
+		color: var(--gold-ink);
 	}
 
 	/* Cover and side column. */
 	.lead {
 		display: grid;
 		gap: var(--space-8);
-		margin-top: var(--space-8);
+		margin-top: var(--space-12);
 	}
 
 	@media (min-width: 48rem) {
@@ -201,11 +241,11 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		}
 	}
 
-	/* A print: white border, a slight tilt, tape holding it down. */
+	/* A polaroid: white border, deeper at the bottom, a slight tilt, tape holding it down. */
 	.print {
 		position: relative;
 		margin: 0;
-		padding: 0.6rem 0.6rem 0.9rem;
+		padding: 0.65rem 0.65rem 1rem;
 		background: #fbfaf6;
 		box-shadow:
 			0 1px 1px rgb(0 0 0 / 0.15),
@@ -223,7 +263,9 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		display: grid;
 		place-items: center;
 		aspect-ratio: 4 / 3;
-		background: linear-gradient(180deg, #2b3542, #5d6b7c);
+		background:
+			radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.12), transparent 60%),
+			linear-gradient(180deg, var(--navy), #2a3b55);
 	}
 
 	.placeholder .todo {
@@ -232,8 +274,8 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 	}
 
 	.print figcaption {
-		margin-top: 0.4rem;
-		font-family: 'Caveat', cursive;
+		margin-top: 0.45rem;
+		font-family: var(--font-hand);
 		font-size: 1.5rem;
 		font-weight: 600;
 		line-height: 1.1;
@@ -263,7 +305,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		top: -0.7rem;
 		right: -1.4rem;
 		transform: rotate(28deg);
-		background: rgb(170 190 210 / 0.7);
+		background: rgb(201 164 92 / 0.55);
 	}
 
 	.tape-c {
@@ -295,10 +337,11 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		position: relative;
 		width: 148px;
 		height: 148px;
-		background-color: #12233b;
+		background-color: var(--navy);
 		background-repeat: no-repeat;
 	}
 
+	/* A brass map pin, as on the desk. */
 	.stamp-pin {
 		position: absolute;
 		top: calc(50% - 7px);
@@ -306,52 +349,59 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		width: 14px;
 		height: 14px;
 		border-radius: 50%;
-		background: radial-gradient(circle at 35% 30%, #b8ccff, #5b8cff 55%, #2f5bd3);
+		background: radial-gradient(circle at 35% 30%, #fff1c9, #c9a45c 45%, #6f4f1d);
 		box-shadow:
-			0 0 0 2px rgb(255 255 255 / 0.8),
-			0 2px 4px rgb(0 0 0 / 0.4);
+			0 0 0 2px rgb(251 250 246 / 0.85),
+			0 2px 4px rgb(0 0 0 / 0.45);
 	}
 
 	.stamp figcaption {
 		margin-top: 6px;
 		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.75rem;
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
 		text-align: center;
 	}
 
 	.blurb {
-		font-size: var(--text-lg);
-		line-height: 1.55;
+		font-size: 1.2rem;
+		line-height: 1.6;
 	}
 
-	/* The journal: ruled paper with a margin line. */
+	/* The journal: between gold rules, opening with a deco drop cap. */
 	.journal {
-		--rule: 1.75rem;
 		margin-top: var(--space-12);
-		padding: var(--rule) clamp(1rem, 4vw, 2.5rem) var(--rule) clamp(2.5rem, 7vw, 4.5rem);
-		background:
-			linear-gradient(90deg, transparent calc(clamp(2.5rem, 7vw, 4.5rem) - 1.1rem), rgb(200 80 80 / 0.35) 0 calc(clamp(2.5rem, 7vw, 4.5rem) - 1rem), transparent 0),
-			repeating-linear-gradient(180deg, transparent 0 calc(var(--rule) - 1px), rgb(70 110 170 / 0.22) calc(var(--rule) - 1px) var(--rule)),
-			#fbf8f0;
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
-		line-height: var(--rule);
+		padding-block: var(--space-8);
+		border-block: 1px solid color-mix(in srgb, var(--gold-ink) 45%, transparent);
+		font-size: 1.1rem;
+		line-height: 1.75;
 	}
 
-	.journal .prose :global(p),
-	.journal .prose :global(li) {
+	.journal .prose {
 		max-width: 65ch;
+		margin-inline: auto;
 	}
 
 	.journal .prose :global(* + *) {
-		margin-top: var(--rule);
+		margin-top: 1.1em;
+	}
+
+	.journal .prose :global(> p:first-child::first-letter) {
+		float: left;
+		margin: 0.08em 0.12em 0 0;
+		color: var(--gold-ink);
+		font-family: var(--font-display);
+		font-size: 4em;
+		line-height: 0.8;
 	}
 
 	.journal .prose :global(h2),
 	.journal .prose :global(h3) {
-		font-family: 'Caveat', cursive;
-		font-size: 2rem;
-		line-height: var(--rule);
+		margin-top: 1.6em;
+		font-size: 1.5rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
 	}
 
 	.journal .prose :global(img) {
@@ -372,22 +422,33 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		list-style: none;
 	}
 
+	/* On to the previous and next trips: deco tags on the dark room. */
 	.pager {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: space-between;
 		gap: var(--space-4);
 		max-width: 60rem;
-		margin: var(--space-8) auto 0;
-		font-weight: 600;
+		margin: var(--space-12) auto 0;
 	}
 
 	.pager a {
+		--cut: 8px;
+		padding: 0.8rem 1.2rem 0.65rem;
+		color: var(--ivory);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.18em;
 		text-decoration: none;
+		text-transform: uppercase;
 	}
 
-	.pager a:hover {
-		text-decoration: underline;
+	.pager a:hover,
+	.pager a:focus-visible {
+		--line: var(--gold-bright);
+		--fill: color-mix(in srgb, #2a1f12 92%, transparent);
+		color: var(--gold-bright);
+		outline: none;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {

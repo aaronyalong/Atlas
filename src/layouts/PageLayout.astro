@@ -1,7 +1,9 @@
 ---
 /**
- * Layout for the 2D pages (trip list, trip scrapbooks, credits, 404): a slim header with a way
- * back to the desk, the page content, and a footer linking to the portfolio. No client JS.
+ * Layout for the 2D pages (trip list, trip scrapbooks, 404): dark like the desk's room, in its
+ * art deco: a header with the title spaced out in Poiret One and a gold rule, the page content,
+ * and a footer with the portfolio link and the one credit the site must show (Earth's textures
+ * are CC BY 4.0). No client JS.
  */
 import BaseLayout from './BaseLayout.astro';
 import { PORTFOLIO_URL } from '../lib/site';
@@ -17,31 +19,43 @@ const { title, description, image, type } = Astro.props;
 const year = new Date().getFullYear();
 ---
 
-<BaseLayout title={title} description={description} image={image} type={type}>
+<BaseLayout title={title} description={description} image={image} type={type} bodyClass="on-dark deco-page">
 	<header class="site-header">
 		<nav class="container inner" aria-label="Site">
-			<a class="home" href="/">← Back to the desk</a>
-			<ul>
+			<a class="brand" href="/">Travel</a>
+			<ul class="caps">
+				<li><a href="/">The desk</a></li>
 				<li><a href="/trips/">All trips</a></li>
-				<li><a href="/credits/">Credits</a></li>
 			</ul>
 		</nav>
+		<div class="container"><div class="deco-rule" aria-hidden="true"><span></span></div></div>
 	</header>
 	<main id="main" class="container">
 		<slot />
 	</main>
 	<footer class="site-footer">
-		<div class="container inner">
-			<p>© {year} Aaron Yalong</p>
-			<a href={PORTFOLIO_URL}>aaronyalong.com</a>
+		<div class="container">
+			<div class="deco-rule" aria-hidden="true"><span></span></div>
+			<div class="inner">
+				<p>© {year} Aaron Yalong · <a href={PORTFOLIO_URL}>aaronyalong.com</a></p>
+				<p class="credit">
+					Earth imagery: <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a>,{' '}
+					<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
+				</p>
+			</div>
 		</div>
 	</footer>
 </BaseLayout>
 
 <style>
-	:global(body) {
+	:global(body.deco-page) {
 		display: flex;
 		flex-direction: column;
+		/* The room: near-black, with a faint gold glow from above, like the ceiling light. */
+		background:
+			radial-gradient(ellipse 70% 40% at 50% -5%, rgb(201 164 92 / 0.12), transparent 70%),
+			var(--scene-bg);
+		background-attachment: fixed;
 	}
 
 	.inner {
@@ -53,29 +67,34 @@ const year = new Date().getFullYear();
 		padding-block: var(--space-4);
 	}
 
-	.site-header {
-		border-bottom: 1px solid var(--color-border);
-		font-size: var(--text-sm);
+	.brand {
+		color: var(--ivory);
+		font-family: var(--font-display);
+		font-size: 1.6rem;
+		letter-spacing: 0.32em;
+		text-decoration: none;
+		text-transform: uppercase;
+	}
+
+	.brand:hover {
+		color: var(--gold-bright);
 	}
 
 	.site-header ul {
 		display: flex;
-		gap: var(--space-4);
+		gap: var(--space-6);
 		padding: 0;
+		font-size: 0.75rem;
 		list-style: none;
 	}
 
-	.site-header a {
-		color: var(--color-text);
+	.site-header ul a {
+		color: var(--gold);
 		text-decoration: none;
 	}
 
-	.site-header a:hover {
-		color: var(--color-accent);
-	}
-
-	.home {
-		font-weight: 600;
+	.site-header ul a:hover {
+		color: var(--gold-bright);
 	}
 
 	main {
@@ -84,8 +103,20 @@ const year = new Date().getFullYear();
 	}
 
 	.site-footer {
-		border-top: 1px solid var(--color-border);
-		color: var(--color-text-muted);
-		font-size: var(--text-sm);
+		color: color-mix(in srgb, var(--ivory) 60%, transparent);
+		font-size: 0.8rem;
+		letter-spacing: 0.04em;
+	}
+
+	.site-footer a {
+		color: var(--gold);
+	}
+
+	.site-footer a:hover {
+		color: var(--gold-bright);
+	}
+
+	.credit {
+		font-size: 0.72rem;
 	}
 </style>

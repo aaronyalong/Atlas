@@ -1,10 +1,11 @@
-import { ContactShadows, Environment, type CameraControlsImpl } from '@react-three/drei';
+import { Environment, type CameraControlsImpl } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import { BankersLamp } from './BankersLamp';
 import { CameraRig, type CameraFocus } from './CameraRig';
 import type { Framing } from './camera';
 import { Desk } from './Desk';
+import { GaugePanel } from './Gauges';
 import type { DeviceProfile } from './device';
 import { PALETTE } from './palette';
 import { Pins } from './Pins';
@@ -51,7 +52,9 @@ interface SceneProps {
  *      (SpaceView.tsx).
  *   2. A recessed ceiling light over the map: the even key light that makes the map readable.
  *   3. The banker's lamp (BankersLamp.tsx): a warm pool over the left of the map and up the wall
- *      behind it, the one warm light against the cool ones.
+ *      behind it. Warm wall-washers either side of the window bring out the panels and the brass,
+ *      and the viewport's gold cove light glows in its recess (Viewport.tsx): warm against the
+ *      cool sunlight.
  *   4. Earthlight: a faint blue light from below the window.
  *   5. A hemisphere light: a dim, cool wash from above, warm-dark from below, so the shadows
  *      read as deep blue-grey instead of pure black.
@@ -122,19 +125,7 @@ export function Scene({ profile, framing, controlsRef, trips, map, selected, hov
 				/>
 				<Desk onClick={onClose} reflections={!profile.isMobile} />
 				<BankersLamp shadowMapSize={profile.shadowMapSize} reducedMotion={profile.reducedMotion} />
-				{/* Contact shadows: the scene is drawn from below into a small depth image, blurred,
-				    and laid on the desk as a soft dark halo under everything that touches it. */}
-				<ContactShadows
-					// Just the working area: the map and the lamp's base.
-					position={[0, 0.0005, 0.05]}
-					scale={[4.2, 2]}
-					resolution={profile.isMobile ? 256 : 512}
-					frames={profile.isMobile ? 1 : Infinity}
-					far={0.25}
-					blur={2.2}
-					opacity={0.55}
-					color="#0b0b0d"
-				/>
+				<GaugePanel trips={trips} reducedMotion={profile.reducedMotion} />
 				<WorldMap
 					map={map}
 					onHover={(uv) => onHover(uv ? nearest(uv) : null)}

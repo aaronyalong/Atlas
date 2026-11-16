@@ -1,6 +1,8 @@
 /* ---------- Design tokens ----------
- * Colour, type, spacing and motion mirror the portfolio (Portfolio/src/styles/global.css) so the
- * two sites feel related. The travel tokens below are new: the colours of the desk scene.
+ * Spacing and motion mirror the portfolio (Portfolio/src/styles/global.css). Colour and type are
+ * the desk's art deco: black and graphite, brass and gold, ivory paper, the map's navy; Poiret
+ * One for titles, Josefin Sans (a 1920s-style geometric sans) for everything else. Every page is
+ * dark, like the room.
  */
 :root {
 	color-scheme: light dark;
@@ -21,8 +23,8 @@
 	--dark-text: #ececef;
 	--dark-text-muted: #a0a0aa;
 	--dark-border: #2c2c31;
-	--dark-accent: #8aa8ff;
-	--dark-accent-hover: #b0c4ff;
+	--dark-accent: #d4b06a;
+	--dark-accent-hover: #ecd08f;
 
 	/* Colour (travel): the desk scene. The 3D code keeps its own copies of these in
 	   src/components/desk/palette.ts, since WebGL materials can't read CSS variables. */
@@ -31,12 +33,23 @@
 	--paper: #f4ecdc;
 	--ink: #2a2622;
 
-	/* Typography (portfolio: system fonts only) */
-	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	/* Colour (deco): the brass of the lamp and the viewport, the gold of the map's border. */
+	--gold: #c9a45c;
+	--gold-bright: #e6c784;
+	/* Gold dark enough for text and rules on ivory paper (5:1 on --paper). */
+	--gold-ink: #7f5c22;
+	--ivory: #f3ead6;
+	--bronze: #1d1712;
+	--navy: #12233b;
+
+	/* Typography */
+	--font-display: 'Poiret One', 'Josefin Sans', system-ui, sans-serif;
+	--font-sans: 'Josefin Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	--font-hand: 'Caveat', cursive;
 	--font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 	--text-sm: 0.875rem;
-	--text-base: 1rem;
-	--text-lg: 1.125rem;
+	--text-base: 1.0625rem;
+	--text-lg: 1.1875rem;
 	--text-xl: 1.375rem;
 	--text-2xl: 1.75rem;
 	--text-3xl: 2.25rem;
@@ -128,8 +141,10 @@ h1,
 h2,
 h3,
 h4 {
-	line-height: 1.25;
-	font-weight: 650;
+	font-family: var(--font-display);
+	font-weight: 400;
+	letter-spacing: 0.06em;
+	line-height: 1.2;
 	text-wrap: balance;
 }
 
@@ -175,6 +190,72 @@ pre {
 	max-width: calc(var(--content-width) + 2 * var(--gutter));
 	margin-inline: auto;
 	padding-inline: var(--gutter);
+}
+
+/* ---------- Deco pieces ---------- */
+
+/* Small capitals, spaced wide: labels, places, dates, buttons. */
+.caps {
+	font-family: var(--font-sans);
+	font-weight: 600;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+}
+
+/*
+ * A tag with its corners clipped off (the deco octagon), outlined in gold: the pin labels, the
+ * desk's buttons and hover labels. The element's own background is the gold line; ::before, 1px
+ * inside it and clipped the same way, is the fill. (A border can't follow the clipped corners.)
+ */
+.deco-tag {
+	--cut: 7px;
+	--line: color-mix(in srgb, var(--gold) 75%, transparent);
+	--fill: color-mix(in srgb, #0d0b09 86%, transparent);
+	position: relative;
+	isolation: isolate;
+	background: var(--line);
+	clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+
+.deco-tag::before {
+	content: '';
+	position: absolute;
+	inset: 1px;
+	z-index: -1;
+	background: var(--fill);
+	clip-path: polygon(
+		calc(var(--cut) - 0.6px) 0,
+		calc(100% - var(--cut) + 0.6px) 0,
+		100% calc(var(--cut) - 0.6px),
+		100% calc(100% - var(--cut) + 0.6px),
+		calc(100% - var(--cut) + 0.6px) 100%,
+		calc(var(--cut) - 0.6px) 100%,
+		0 calc(100% - var(--cut) + 0.6px),
+		0 calc(var(--cut) - 0.6px)
+	);
+}
+
+/* A gold rule with a diamond in the middle, between sections and under titles. */
+.deco-rule {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	color: var(--gold);
+}
+
+.deco-rule::before,
+.deco-rule::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, currentColor 30%, currentColor 70%, transparent);
+}
+
+.deco-rule > span {
+	width: 7px;
+	height: 7px;
+	background: currentColor;
+	transform: rotate(45deg);
 }
 
 /* Visible placeholder for content Aaron still needs to supply. */
