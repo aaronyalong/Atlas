@@ -12,6 +12,9 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 | `npm run dev`     | Dev server at `localhost:4321`                |
 | `npm run build`   | Build the static site to `./dist/`            |
 | `npm run preview` | Serve the build locally                       |
+| `npm run build:deploy` | Build, then fail on visible TODOs, broken internal links or image metadata (what Cloudflare runs) |
+| `npm run map`     | Redraw the map texture from `src/lib/map/config.ts` |
+| `npm run og`      | Redraw the link-preview card (`public/og/home.jpg`) |
 
 ## Where things live
 
@@ -32,8 +35,9 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
 Only assets whose licence allows use here (CC0, or CC-BY with credit). Every third-party asset
 is listed on [`/credits`](src/pages/credits.astro), whether its licence requires it or not.
 
-- `public/textures/`: ambientCG Wood051 and Paper001, re-encoded from the 1K JPG sets to WebP
-  (wood 1024px, paper 512px). Only colour (wood), normal and roughness maps are kept.
+- `public/textures/`: ambientCG Wood051, Paper001 and Leather037, re-encoded from the 1K JPG sets
+  to WebP without metadata (wood 1024px, paper and leather 512px). Only colour (wood), normal and
+  roughness maps are kept.
 - `public/env/`: Poly Haven `small_empty_room_1`, the 1k HDR halved to 512×256 (a 2×2 box filter
   in linear light). The scene uses it for reflections and a faint fill; the lamp is the key light.
 
@@ -48,9 +52,33 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
 1. ~~Empty desk, lighting, camera~~
 2. ~~Polaroids from trip data, hover and click~~
 3. ~~World map with lat/lng pins (Natural Earth projection, cropped, pins computed at build time)~~
-4. Trip pages (2D scrapbook)
-5. Props and polish (passport, tickets, journal, camera)
-6. Deploy to travel.aaronyalong.com (Cloudflare Worker, same setup as the portfolio)
+4. ~~Trip pages (2D scrapbook)~~
+5. ~~Props and polish (passport, tickets, journal, camera)~~
+6. ~~Deploy setup for travel.aaronyalong.com (Cloudflare Worker, same setup as the portfolio)~~
+
+## Adding a trip
+
+1. Add `src/content/trips/<slug>.md` with at least `title`, `place`, `lat`, `lng` (see the
+   schema in `src/content.config.ts`). Add `featured: true` for a polaroid on the desk.
+2. Put its photos in `src/content/trips/<slug>/` and reference them as `cover` (with
+   `coverAlt`) and `photos`. They're re-encoded at build time; EXIF and GPS are stripped.
+3. Write the journal as the file's Markdown body.
+4. If it's outside the map's crop, the build warns: widen `src/lib/map/config.ts` and run
+   `npm run map`. Run `npm run og` to put its pin on the link-preview card.
+
+## Deploying
+
+The same setup as the portfolio: Cloudflare Workers with static assets, built by Cloudflare from
+GitHub. `wrangler.jsonc` names the Worker `atlas` and attaches `travel.aaronyalong.com` as a
+custom domain (Cloudflare creates the DNS record and certificate on the first deploy, since
+`aaronyalong.com` is in the same account).
+
+1. Push this repo to GitHub.
+2. Cloudflare dashboard → Workers & Pages → Create → Import a repository → pick it. Build
+   command `npm run build:deploy`, deploy command `npx wrangler deploy`.
+3. `build:deploy` refuses to deploy while any page shows a TODO, so fill in the trips first.
+4. Once it's live, give the portfolio's Travel pin its link: `href` on the Travel entry in
+   `Portfolio/src/lib/interests.ts`.
 
 Backlog:
 

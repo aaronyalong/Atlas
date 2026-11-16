@@ -1,0 +1,28 @@
+---
+/** Served for any address that doesn't exist (wrangler.jsonc: not_found_handling "404-page"). */
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout title="Page not found" description="This page doesn't exist.">
+	<h1>Page not found</h1>
+	<p class="lede">Nothing's pinned here. Try the desk, or the list of every trip.</p>
+	<ul class="links">
+		<li><a href="/">The desk</a></li>
+		<li><a href="/trips/">All trips</a></li>
+	</ul>
+</PageLayout>
+
+<style>
+	.lede {
+		margin-block: var(--space-3) var(--space-6);
+		font-size: var(--text-lg);
+		color: var(--color-text-muted);
+	}
+
+	.links {
+		display: flex;
+		gap: var(--space-6);
+		padding: 0;
+		list-style: none;
+	}
+</style>

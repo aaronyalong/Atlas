@@ -1,7 +1,7 @@
 ---
 /**
- * Layout for the 2D pages (trip list, credits, later the trip scrapbooks): a slim header with a
- * way back to the desk, the page content, and a footer linking to the portfolio. No client JS.
+ * Layout for the 2D pages (trip list, trip scrapbooks, credits, 404): a slim header with a way
+ * back to the desk, the page content, and a footer linking to the portfolio. No client JS.
  */
 import BaseLayout from './BaseLayout.astro';
 import { PORTFOLIO_URL } from '../lib/site';
@@ -9,13 +9,15 @@ import { PORTFOLIO_URL } from '../lib/site';
 interface Props {
 	title?: string;
 	description?: string;
+	image?: { src: string; alt: string };
+	type?: 'website' | 'article';
 }
 
-const { title, description } = Astro.props;
+const { title, description, image, type } = Astro.props;
 const year = new Date().getFullYear();
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout title={title} description={description} image={image} type={type}>
 	<header class="site-header">
 		<nav class="container inner" aria-label="Site">
 			<a class="home" href="/">← Back to the desk</a>

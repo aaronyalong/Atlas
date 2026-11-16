@@ -5,9 +5,10 @@ import { RepeatWrapping, SRGBColorSpace, type Texture } from 'three';
 
 /**
  * Desk top size in metres. Bigger than the view: the front edge stays below the starting shot
- * (even on a tall phone screen) and the back edge fades out into the fog.
+ * (even on a tall phone screen), the sides stay outside it (even on a wide landscape phone), and
+ * the back edge fades out into the fog.
  */
-export const DESK = { width: 2.4, depth: 2.05, thickness: 0.05, centerZ: 0.075 } as const;
+export const DESK = { width: 3, depth: 2.05, thickness: 0.05, centerZ: 0.075 } as const;
 
 /** ambientCG "Wood051" (CC0), re-encoded to 1024px WebP; see /credits. One tile is about 1 m. */
 const WOOD = {

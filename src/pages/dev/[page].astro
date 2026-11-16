@@ -1,8 +1,8 @@
 ---
 /**
  * Dev-only pages, served by `npm run dev` at /dev/<page> and never built: getStaticPaths lists
- * them only in dev, so a production build emits nothing for this route (and any future sitemap,
- * built from the emitted pages, won't see them either).
+ * them only in dev, so a production build emits nothing for this route, and the sitemap (built
+ * from a fixed list of real pages) never mentions it.
  *
  *   /dev/compare: before/after sliders for the realism pass. The screenshots live in
  *   src/dev-shots/ (git-ignored; taken locally by the screenshot script), named
@@ -10,13 +10,14 @@
  */
 import type { GetStaticPaths } from 'astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { listShots } from '../../lib/dev-shots';
 
 export const getStaticPaths = (() => (import.meta.env.DEV ? [{ params: { page: 'compare' } }] : [])) satisfies GetStaticPaths;
 
-const shots = import.meta.glob('/src/dev-shots/*.jpg', { eager: true, query: '?url', import: 'default' }) as Record<
-	string,
-	string
->;
+// Listed from disk and served by ./shots/[file].ts, never imported: an import would make Vite
+// copy every screenshot into the production build even though this page isn't built there.
+const files = await listShots();
+const shots = Object.fromEntries(files.map((f) => [`/${f}`, `/dev/shots/${f}`]));
 
 interface Step {
 	index: number;

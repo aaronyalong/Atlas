@@ -1,0 +1,17 @@
+// Cloudflare Workers with static assets: serves the static Astro build from dist/. The same setup
+// as the portfolio (Portfolio/wrangler.jsonc): no Worker code (no "main") and no Astro adapter.
+// Cloudflare builds with `npm run build:deploy` (fails on visible TODOs, broken internal links or
+// image metadata) and then runs `npx wrangler deploy`.
+{
+	"name": "atlas",
+	"compatibility_date": "2026-11-15",
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "404-page"
+	},
+	// The subdomain. aaronyalong.com is already in this Cloudflare account, so Cloudflare creates
+	// the DNS record and HTTPS certificate for it on the first deploy.
+	"routes": [{ "pattern": "travel.aaronyalong.com", "custom_domain": true }],
+	// Serve only at travel.aaronyalong.com, not at a *.workers.dev address.
+	"workers_dev": false
+}

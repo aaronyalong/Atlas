@@ -34,8 +34,27 @@ const trips = defineCollection({
 			coverAlt: z.string().optional(),
 			/** Handwritten on the polaroid. Defaults to the title. */
 			caption: z.string().max(28).optional(),
+			/**
+			 * More photos for the trip's scrapbook page, in order. Paths relative to the trip file,
+			 * like `cover`; re-encoded the same way, so EXIF and GPS are stripped.
+			 */
+			photos: z
+				.array(
+					z.object({
+						src: image(),
+						/** For screen readers: what's in the photo. */
+						alt: z.string(),
+						/** Handwritten under the print. */
+						caption: z.string().max(40).optional(),
+					}),
+				)
+				.default([]),
 			/** Gets a polaroid on the desk. Every trip gets a map pin regardless. */
 			featured: z.boolean().default(false),
+		})
+		.refine((trip) => !trip.cover || trip.coverAlt, {
+			message: 'A cover photo needs coverAlt (what the photo shows, for screen readers).',
+			path: ['coverAlt'],
 		}),
 });
 

@@ -1,18 +1,25 @@
 import { ContactShadows, Environment, type CameraControlsImpl } from '@react-three/drei';
-import { Suspense, useEffect, useMemo, type RefObject } from 'react';
+import { lazy, Suspense, useEffect, useMemo, type RefObject } from 'react';
 import type { Vector3Tuple } from 'three';
 import { CameraRig } from './CameraRig';
 import type { Framing } from './camera';
 import { Desk, DESK } from './Desk';
 import type { DeviceProfile } from './device';
-import { Effects } from './Effects';
 import { Lamp } from './Lamp';
-import { placePolaroids, presentedPosition } from './layout';
+import { placePolaroids, presentedPosition, propSpots } from './layout';
 import { PALETTE } from './palette';
 import { Pins, TAG_OFFSET } from './Pins';
 import { Polaroids } from './Polaroids';
+import { DeskProps } from './Props';
 import type { DeskMap, DeskTrip, ItemRef } from './types';
 import { mapToDesk, WorldMap } from './WorldMap';
+
+/**
+ * The post-processing stack (about 130 KB of code) is loaded on its own, after the scene: the
+ * desk appears as soon as it's ready, and the effects fade in a moment later. The renderer's own
+ * AgX tone mapping matches the effects' final pass, so the switch-over doesn't jump.
+ */
+const Effects = lazy(() => import('./Effects').then((m) => ({ default: m.Effects })));
 
 interface SceneProps {
 	profile: DeviceProfile;
@@ -50,6 +57,7 @@ interface SceneProps {
 export function Scene({ profile, framing, controlsRef, trips, map, selected, focused, onSelect, onClose, onReady }: SceneProps) {
 	const featured = useMemo(() => trips.filter((t) => t.featured), [trips]);
 	const placed = useMemo(() => placePolaroids(featured, framing.portrait), [featured, framing.portrait]);
+	const spots = useMemo(() => propSpots(framing.portrait), [framing.portrait]);
 
 	// Where the camera should look while something is open. Memoised so the camera only moves
 	// when the selection actually changes.
@@ -112,6 +120,7 @@ export function Scene({ profile, framing, controlsRef, trips, map, selected, foc
 					textureWidth={profile.polaroidTextureWidth}
 					reducedMotion={profile.reducedMotion}
 				/>
+				<DeskProps spots={spots} textureWidth={profile.polaroidTextureWidth} reducedMotion={profile.reducedMotion} />
 				<Environment
 					files="/env/small_empty_room_1_512.hdr"
 					environmentIntensity={0.1}
@@ -123,7 +132,9 @@ export function Scene({ profile, framing, controlsRef, trips, map, selected, foc
 			</Suspense>
 
 			<CameraRig controlsRef={controlsRef} framing={framing} reducedMotion={profile.reducedMotion} focus={focus} />
-			<Effects profile={profile} focus={focus} />
+			<Suspense fallback={null}>
+				<Effects profile={profile} focus={focus} />
+			</Suspense>
 		</>
 	);
 }

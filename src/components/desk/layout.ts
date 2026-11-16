@@ -70,3 +70,43 @@ export function placePolaroids(trips: DeskTrip[], portrait: boolean): PlacedPola
 export function presentedPosition(rest: Vector3Tuple): Vector3Tuple {
 	return [rest[0], 0.1, rest[2] + 0.04];
 }
+
+/** Where a prop sits: desk position (metres), optional height, and its turn in degrees. */
+export interface PropSpot {
+	x: number;
+	z: number;
+	y?: number;
+	turn: number;
+}
+
+export interface PropSpots {
+	passport: PropSpot;
+	journal: PropSpot;
+	boardingPass: PropSpot;
+	trainTicket: PropSpot;
+	camera: PropSpot;
+}
+
+/*
+ * The props fill the gaps the polaroids leave: the camera between the lamp and the map, the
+ * journal behind the map, the passport off to one side, the tickets in a little overlapping pile.
+ * The train ticket sits a hair higher than the boarding pass it overlaps.
+ */
+const WIDE_PROPS: PropSpots = {
+	camera: { x: -0.37, z: -0.08, turn: 24 },
+	// Spine on the left, like a book facing you: it opens to the left and the page reads upright.
+	journal: { x: -0.02, z: -0.27, turn: -6 },
+	passport: { x: 0.62, z: 0.25, turn: -14 },
+	boardingPass: { x: -0.5, z: 0.36, turn: 10 },
+	trainTicket: { x: -0.43, z: 0.43, y: 0.0006, turn: -9 },
+};
+
+const TALL_PROPS: PropSpots = {
+	camera: { x: -0.37, z: -0.07, turn: 30 },
+	journal: { x: 0.04, z: -0.52, turn: -8 },
+	passport: { x: 0.14, z: 0.52, turn: -14 },
+	boardingPass: { x: -0.2, z: 0.52, turn: 8 },
+	trainTicket: { x: -0.14, z: 0.59, y: 0.0006, turn: -10 },
+};
+
+export const propSpots = (portrait: boolean): PropSpots => (portrait ? TALL_PROPS : WIDE_PROPS);

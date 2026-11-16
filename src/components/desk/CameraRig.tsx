@@ -1,5 +1,7 @@
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import { useEffect, useRef, type RefObject } from 'react';
+import type { PerspectiveCamera } from 'three';
 import type { Vector3Tuple } from 'three';
 import { DESK_TARGET, FOCUS_POLAR, ORBIT_LIMITS, type Framing } from './camera';
 
@@ -25,6 +27,7 @@ interface CameraRigProps {
  */
 export function CameraRig({ controlsRef, framing, reducedMotion, focus }: CameraRigProps) {
 	const hadFocus = useRef(false);
+	const camera = useThree((state) => state.camera) as PerspectiveCamera;
 	useEffect(() => {
 		const controls = controlsRef.current;
 		if (!controls) return;
@@ -39,10 +42,16 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus }: Camera
 		controls.touches.two = ACTION.TOUCH_DOLLY;
 		controls.touches.three = ACTION.NONE;
 
+		// The lens for this framing (it changes when a phone is turned).
+		camera.fov = framing.fov;
+		camera.updateProjectionMatrix();
+
 		// Jump (no animation) to the starting shot, then remember it as the view reset() returns to.
+		controls.enabled = true;
+		controls.minDistance = framing.minDistance;
 		controls.setLookAt(...framing.position, ...DESK_TARGET, false);
 		controls.saveState();
-	}, [controlsRef, framing]);
+	}, [controlsRef, framing, camera]);
 
 	// Fly to an opened polaroid, and back to the saved home view when it closes.
 	useEffect(() => {

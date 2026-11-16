@@ -3,6 +3,7 @@
  * "Skip the 3D": every trip as a plain list, for screen readers, slow phones and search engines.
  * Built from the trips collection, so a new trip file shows up here automatically.
  */
+import { Image } from 'astro:assets';
 import PageLayout from '../../layouts/PageLayout.astro';
 import { formatTripDates, getTrips, tripHref, tripName } from '../../lib/trips';
 
@@ -18,6 +19,9 @@ const trips = await getTrips();
 				const dates = formatTripDates(trip);
 				return (
 					<li>
+						{trip.data.cover && (
+							<Image class="thumb" src={trip.data.cover} alt="" width={160} height={120} fit="cover" />
+						)}
 						<a class="name" href={tripHref(trip)}>
 							{tripName(trip)}
 						</a>
@@ -61,6 +65,14 @@ const trips = await getTrips();
 
 	.name {
 		font-weight: 600;
+	}
+
+	/* Decorative: the link text says where it goes, so the thumbnail has empty alt. */
+	.thumb {
+		width: 4rem;
+		height: 3rem;
+		object-fit: cover;
+		border-radius: 3px;
 	}
 
 	.dates {

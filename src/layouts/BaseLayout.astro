@@ -1,7 +1,8 @@
 ---
 /**
- * The document shell every page shares: <head> (title, description, canonical, icons) and an
- * empty <body>. The 3D desk page fills the body itself; 2D pages use PageLayout on top of this.
+ * The document shell every page shares: <head> (title, description, canonical, icons, link
+ * previews) and an empty <body>. The 3D desk page fills the body itself; 2D pages use
+ * PageLayout on top of this.
  */
 import '../styles/global.css';
 import { SITE_DESCRIPTION, SITE_NAME } from '../lib/site';
@@ -12,11 +13,24 @@ interface Props {
 	description?: string;
 	/** Classes for <body>, e.g. the desk page's full-screen, always-dark mode. */
 	bodyClass?: string;
+	/**
+	 * Link-preview card (1200×630). Defaults to the desk (public/og/home.jpg); a trip page with a
+	 * cover photo passes a crop of it.
+	 */
+	image?: { src: string; alt: string };
+	/** Open Graph type: "article" for trip pages. */
+	type?: 'website' | 'article';
 }
 
-const { title, description = SITE_DESCRIPTION, bodyClass } = Astro.props;
+const HOME_CARD = {
+	src: '/og/home.jpg',
+	alt: "An old-style world map on a dark desk, with blue pins on the places in Aaron Yalong's travel scrapbook",
+};
+
+const { title, description = SITE_DESCRIPTION, bodyClass, image = HOME_CARD, type = 'website' } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const imageUrl = new URL(image.src, Astro.site).href;
 ---
 
 <!doctype html>
@@ -31,11 +45,22 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<title>{fullTitle}</title>
 		<link rel="canonical" href={canonical} />
+
+		<!-- Link previews (LinkedIn, Slack, iMessage, X…). -->
 		<meta property="og:site_name" content={SITE_NAME} />
-		<meta property="og:type" content="website" />
+		<meta property="og:type" content={type} />
 		<meta property="og:title" content={fullTitle} />
 		<meta property="og:description" content={description} />
 		<meta property="og:url" content={canonical} />
+		<meta property="og:image" content={imageUrl} />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content={image.alt} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={fullTitle} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={imageUrl} />
+		<meta name="twitter:image:alt" content={image.alt} />
 	</head>
 	<body class={bodyClass}>
 		<slot />

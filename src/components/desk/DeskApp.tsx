@@ -19,7 +19,7 @@ import { itemId, type DeskMap, type DeskTrip, type ItemRef } from './types';
 export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMap }) {
 	// Read once from the browser at startup. (Safe: client:only never runs this on the server.)
 	const [profile] = useState(getDeviceProfile);
-	const [framing] = useState(() => framingFor(window.innerWidth / window.innerHeight));
+	const [framing, setFraming] = useState(() => framingFor(window.innerWidth / window.innerHeight));
 	const [webgl] = useState(hasWebGL);
 	const [ready, setReady] = useState(false);
 	// The opened item and the keyboard-focused item. They live here, above the Canvas, so both
@@ -36,6 +36,22 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 			if (current) document.getElementById(`item-${itemId(current.kind, current.slug)}`)?.focus({ preventScroll: true });
 			return null;
 		});
+	}, []);
+
+	// Turning a phone between portrait and landscape: switch to the other framing (lens, starting
+	// shot, polaroid and prop layouts) and close any open card. Plain resizes within the same
+	// orientation keep the current view; the canvas itself always resizes.
+	useEffect(() => {
+		const onResize = () => {
+			const aspect = window.innerWidth / window.innerHeight;
+			setFraming((current) => {
+				if (aspect < 1 === current.portrait) return current;
+				setSelected(null);
+				return framingFor(aspect);
+			});
+		};
+		window.addEventListener('resize', onResize);
+		return () => window.removeEventListener('resize', onResize);
 	}, []);
 
 	// Escape closes an open card.

@@ -4,14 +4,19 @@
   "version": "0.0.1",
   "private": true,
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "map": "node scripts/map.mjs"
+    "map": "node scripts/map.mjs",
+    "og": "node scripts/og.mjs",
+    "check:todos": "node scripts/check-todos.mjs",
+    "check:links": "node scripts/check-links.mjs",
+    "check:exif": "node scripts/check-exif.mjs",
+    "build:deploy": "astro build && node scripts/check-todos.mjs && node scripts/check-links.mjs && node scripts/check-exif.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.9",
