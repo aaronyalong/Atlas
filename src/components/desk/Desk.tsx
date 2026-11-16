@@ -4,10 +4,12 @@ import { useLayoutEffect } from 'react';
 import { RepeatWrapping, SRGBColorSpace, type Texture } from 'three';
 
 /**
- * Desk size in metres: a 1.9 × 1 m writing desk, its back edge a little in front of the wall
- * (src/components/desk/Room.tsx). The map takes up most of it.
+ * Desk size in metres. The back edge sits a little in front of the wall (Room.tsx); the rest runs
+ * on well past anything the camera can see, so its front and side edges (and the floor under it)
+ * never come into frame, however the visitor turns or zooms. The part you see is the working
+ * area around the map.
  */
-export const DESK = { width: 1.9, depth: 1.0, thickness: 0.045, centerZ: -0.03, height: 0.75 } as const;
+export const DESK = { width: 3.2, depth: 1.98, thickness: 0.045, centerZ: 0.46 } as const;
 
 /** ambientCG "Wood051" (CC0), re-encoded to 1024px WebP; see /credits. One tile is about 1 m. */
 const WOOD = {
@@ -17,7 +19,7 @@ const WOOD = {
 };
 
 /**
- * The desk: a walnut top on a matte-black steel frame.
+ * The desk: a walnut top.
  *
  * Three texture maps make the wood a material rather than a picture of one:
  *   - the colour map is what you'd expect;
@@ -48,40 +50,13 @@ export function Desk({
 		}
 	}, [textures, gl]);
 
-	const steel = <meshStandardMaterial color="#141416" metalness={0.6} roughness={0.5} />;
-	const legX = DESK.width / 2 - 0.05;
-	const legZ = DESK.depth / 2 - 0.05;
-	const legH = DESK.height - DESK.thickness;
-
 	return (
 		<group>
-			{/* Steel frame: four square legs and a rail under the top on every side. */}
-			{[-1, 1].flatMap((sx) =>
-				[-1, 1].map((sz) => (
-					<mesh key={`${sx}${sz}`} position={[sx * legX, -DESK.thickness - legH / 2, DESK.centerZ + sz * legZ]} castShadow receiveShadow>
-						<boxGeometry args={[0.04, legH, 0.04]} />
-						{steel}
-					</mesh>
-				)),
-			)}
-			{[-1, 1].map((sz) => (
-				<mesh key={`rz${sz}`} position={[0, -DESK.thickness - 0.025, DESK.centerZ + sz * legZ]} castShadow receiveShadow>
-					<boxGeometry args={[DESK.width - 0.1, 0.05, 0.03]} />
-					{steel}
-				</mesh>
-			))}
-			{[-1, 1].map((sx) => (
-				<mesh key={`rx${sx}`} position={[sx * legX, -DESK.thickness - 0.025, DESK.centerZ]} castShadow receiveShadow>
-					<boxGeometry args={[0.03, 0.05, DESK.depth - 0.1]} />
-					{steel}
-				</mesh>
-			))}
 			<RoundedBox
 				args={[DESK.width, DESK.thickness, DESK.depth]}
 				radius={0.008}
 				smoothness={3}
 				position={[0, -DESK.thickness / 2, DESK.centerZ]}
-				// It shades the floor beneath it, from the lamp and the moon.
 				castShadow
 				receiveShadow
 				onClick={(e) => {

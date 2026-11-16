@@ -1,7 +1,6 @@
-import { useTexture } from '@react-three/drei';
+import { RoundedBox, useTexture } from '@react-three/drei';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-	AdditiveBlending,
 	CanvasTexture,
 	Color,
 	type InstancedMesh,
@@ -15,13 +14,14 @@ import {
 } from 'three';
 import { PALETTE } from './palette';
 import { seededRandom } from './polaroidTexture';
-import { BOOK_COLOURS, createMountainView, drawTerminal } from './roomTextures';
+import { BOOK_COLOURS, drawTerminal } from './roomTextures';
+import { SpaceView, type EarthTextures } from './SpaceView';
 
 /*
- * The room around the desk: a modern dark studio. Charcoal walls; a black steel window onto
- * mountains at night; matte-black steel shelving with dark oak boards, warm LED strips under each
- * shelf, dark hardcovers, and a monitor running a terminal with Tux keeping it company; a dark oak
- * floor. Moonlight comes in through the window.
+ * The room around the desk: a dark studio on a station in orbit. Charcoal walls; a broad viewport
+ * onto space, with Earth below (SpaceView.tsx); matte-black steel shelving with dark oak boards,
+ * warm LED strips under each shelf, dark hardcovers, and a monitor running a terminal with Tux
+ * keeping it company; a dark floor. Sunlight comes in through the viewport.
  *
  * Layout (metres; desk top at y = 0, +z toward the viewer): the desk's back edge is at
  * z ≈ -0.53; the wall's face is at WALL_Z, the floor at FLOOR_Y. The window is centred behind the
@@ -30,7 +30,7 @@ import { BOOK_COLOURS, createMountainView, drawTerminal } from './roomTextures';
 export const WALL_Z = -0.9;
 export const FLOOR_Y = -0.75;
 const WALL_THICKNESS = 0.12;
-const WINDOW = { left: -1.15, right: 0.15, bottom: 0.06, top: 1.4 };
+const WINDOW = { left: -1.5, right: 0.22, bottom: 0.04, top: 1.45 };
 const SHELF = { left: 0.35, right: 1.55, depth: 0.3, top: 1.5 };
 /** Shelf boards (their centre heights). The one at -0.07 sits just above the desk's line. */
 const SHELVES = [-0.42, -0.07, 0.28, 0.63, 0.98, 1.33];
@@ -44,15 +44,18 @@ const WOOD = {
 type Wood = Record<'map' | 'normalMap' | 'roughnessMap', Texture>;
 
 interface RoomProps {
-	/** Phones skip the moonlight's shadow map. */
+	/** Phones skip the sunlight's shadow map. */
 	shadows: boolean;
+	earthTextures: EarthTextures;
+	/** The occasional shooting star, meteor and rocket outside. */
+	skyEvents: boolean;
 	bookCount: number;
 	/** For the terminal's `ls trips/`. */
 	tripSlugs: string[];
 	reducedMotion: boolean;
 }
 
-export function Room({ shadows, bookCount, tripSlugs, reducedMotion }: RoomProps) {
+export function Room({ shadows, earthTextures, skyEvents, bookCount, tripSlugs, reducedMotion }: RoomProps) {
 	const wood = useTexture(WOOD);
 	// The desk uses the same wood (cached by URL); the floor and shelves need their own repeat, so
 	// they get clones that share the image.
@@ -63,9 +66,10 @@ export function Room({ shadows, bookCount, tripSlugs, reducedMotion }: RoomProps
 		<group>
 			<Floor wood={floorWood} />
 			<BackWall shadows={shadows} />
-			<Window />
+			<Viewport />
+			<SpaceView textures={earthTextures} reducedMotion={reducedMotion} events={skyEvents} />
 			<Shelving wood={shelfWood} bookCount={bookCount} tripSlugs={tripSlugs} reducedMotion={reducedMotion} />
-			<Moonlight shadows={shadows} />
+			<Sunlight shadows={shadows} />
 		</group>
 	);
 }
@@ -87,8 +91,9 @@ const steel = () => <meshStandardMaterial color="#101113" metalness={0.55} rough
 
 function Floor({ wood }: { wood: Wood }) {
 	return (
-		<mesh position={[0, FLOOR_Y, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
-			<planeGeometry args={[8, 8]} />
+		// Inside the room only (from the wall forward): it mustn't show through the viewport.
+		<mesh position={[0, FLOOR_Y, (WALL_Z + 4) / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
+			<planeGeometry args={[4 - WALL_Z, 8]} />
 			<meshStandardMaterial map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} color="#4a3c33" roughness={0.85} />
 		</mesh>
 	);
@@ -119,63 +124,65 @@ function BackWall({ shadows }: { shadows: boolean }) {
 	);
 }
 
-/** The window: a black steel grid (four panes across, three down), faint glass, the night outside. */
-function Window() {
-	const [view] = useState(() => createMountainView(2048));
-	useEffect(
-		() => () => {
-			view.sky.dispose();
-			view.lights.dispose();
-		},
-		[view],
-	);
+/**
+ * The viewport: a broad pane in a thick gunmetal frame with bevelled edges, one slim strut down
+ * the middle, and a row of bolts around it, like an observation window on a station. The glass is
+ * barely there; the view beyond is SpaceView.
+ */
+function Viewport() {
 	const { left, right, bottom, top } = WINDOW;
 	const w = right - left;
 	const h = top - bottom;
 	const cx = (left + right) / 2;
 	const cy = (bottom + top) / 2;
-	const z = WALL_Z - WALL_THICKNESS / 2;
-	const bar = (x: number, y: number, bw: number, bh: number, key: string) => (
-		<mesh key={key} position={[x, y, z]} castShadow>
-			<boxGeometry args={[bw, bh, 0.04]} />
-			{steel()}
-		</mesh>
-	);
-	const bars = [
-		bar(cx, bottom + 0.02, w, 0.04, 'fb'),
-		bar(cx, top - 0.02, w, 0.04, 'ft'),
-		bar(left + 0.02, cy, 0.04, h, 'fl'),
-		bar(right - 0.02, cy, 0.04, h, 'fr'),
-		...[1, 2, 3].map((i) => bar(left + (i * w) / 4, cy, 0.016, h, `v${i}`)),
-		...[1, 2].map((i) => bar(cx, bottom + (i * h) / 3, w, 0.016, `h${i}`)),
-	];
+	const z = WALL_Z - 0.01;
+	const F = 0.07; // frame width
+	const gunmetal = <meshStandardMaterial color="#1a1c20" metalness={0.75} roughness={0.38} />;
+	const bolts: [number, number][] = [];
+	for (let i = 0; i <= 10; i++) {
+		const x = left + F / 2 + (i * (w - F)) / 10;
+		bolts.push([x, bottom + F / 2], [x, top - F / 2]);
+	}
+	for (let i = 1; i < 6; i++) {
+		const y = bottom + F / 2 + (i * (h - F)) / 6;
+		bolts.push([left + F / 2, y], [right - F / 2, y]);
+	}
 	return (
 		<group>
-			{bars}
+			{[
+				[cx, bottom + F / 2, w, F],
+				[cx, top - F / 2, w, F],
+				[left + F / 2, cy, F, h],
+				[right - F / 2, cy, F, h],
+			].map(([x, y, bw, bh], i) => (
+				<RoundedBox key={i} args={[bw, bh, 0.06]} radius={0.012} smoothness={3} position={[x, y, z]} castShadow receiveShadow>
+					{gunmetal}
+				</RoundedBox>
+			))}
+			<RoundedBox args={[0.035, h - F, 0.05]} radius={0.01} smoothness={3} position={[cx + w * 0.12, cy, z - 0.005]} castShadow>
+				{gunmetal}
+			</RoundedBox>
+			{bolts.map(([x, y], i) => (
+				<mesh key={i} position={[x, y, z + 0.032]} rotation={[Math.PI / 2, 0, 0]}>
+					<cylinderGeometry args={[0.006, 0.006, 0.006, 6]} />
+					<meshStandardMaterial color="#3a3d43" metalness={0.9} roughness={0.3} />
+				</mesh>
+			))}
 			{/* Glass: barely there, but it catches reflections. */}
-			<mesh position={[cx, cy, z + 0.01]}>
+			<mesh position={[cx, cy, z - 0.02]}>
 				<planeGeometry args={[w, h]} />
-				<meshPhysicalMaterial color="#9fb6c8" transparent opacity={0.07} roughness={0.05} metalness={0} depthWrite={false} />
-			</mesh>
-			{/* Outside, far back, so it shifts behind the frame as the camera moves. */}
-			<mesh position={[cx, 0.85, WALL_Z - 3]}>
-				<planeGeometry args={[9, 4.5]} />
-				<meshBasicMaterial map={view.sky} fog={false} />
-			</mesh>
-			<mesh position={[cx, 0.85, WALL_Z - 2.99]}>
-				<planeGeometry args={[9, 4.5]} />
-				<meshBasicMaterial map={view.lights} color={[5, 4.8, 4.4]} blending={AdditiveBlending} transparent depthWrite={false} fog={false} toneMapped={false} />
+				<meshPhysicalMaterial color="#9fb6c8" transparent opacity={0.06} roughness={0.04} metalness={0} depthWrite={false} />
 			</mesh>
 		</group>
 	);
 }
 
 /**
- * The moon, through the window: a cool directional light from high behind the wall. It casts
- * shadows (desktop), so the wall blocks it except through the window, and the panes and bars
- * draw themselves on the desk.
+ * Sunlight through the viewport: a cool white directional light from high behind the wall. It
+ * casts shadows (desktop), so the wall blocks it except through the viewport, and the frame and
+ * strut draw themselves across the desk.
  */
-function Moonlight({ shadows }: { shadows: boolean }) {
+function Sunlight({ shadows }: { shadows: boolean }) {
 	const [target] = useState(() => new Object3D());
 	return (
 		<>
@@ -183,8 +190,8 @@ function Moonlight({ shadows }: { shadows: boolean }) {
 			<directionalLight
 				position={[-0.75, 2.4, WALL_Z - 1.9]}
 				target={target}
-				color={PALETTE.moonlight}
-				intensity={0.55}
+				color="#dfe6ff"
+				intensity={0.6}
 				castShadow={shadows}
 				shadow-mapSize={[1024, 1024]}
 				shadow-camera-left={-1.4}

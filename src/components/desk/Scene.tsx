@@ -5,7 +5,7 @@ import { DustMotes } from './Atmosphere';
 import { BankersLamp } from './BankersLamp';
 import { CameraRig, type CameraFocus } from './CameraRig';
 import type { Framing } from './camera';
-import { Desk, DESK } from './Desk';
+import { Desk } from './Desk';
 import type { DeviceProfile } from './device';
 import { propSpots } from './layout';
 import { PALETTE } from './palette';
@@ -50,8 +50,9 @@ interface SceneProps {
  *
  * Lighting:
  *   1. The banker's lamp (a wide, soft spotlight): the key light. Warm, casts shadows.
- *   2. Moonlight through the window (Room.tsx): cool, from behind the wall, casting the window's
- *      shape onto the desk.
+ *   2. Sunlight through the viewport (Room.tsx): cool white, from behind the wall, casting the
+ *      viewport's shape onto the desk. Outside, Earth and the passing objects have their own
+ *      sunlit shading (SpaceView.tsx).
  *   3. LED strips under the shelves, and the monitor's glow, so the room around the desk reads.
  *   4. A hemisphere light: a dim, cool wash from above, warm-dark from below, so the shadows
  *      read as deep blue-grey instead of pure black.
@@ -114,13 +115,21 @@ export function Scene({ profile, framing, controlsRef, trips, map, selected, hov
 			    holds back this subtree until it's ready. <Ready> mounts last, so it only runs once
 			    everything else has. */}
 			<Suspense fallback={null}>
-				<Room shadows={profile.moonShadows} bookCount={profile.bookCount} tripSlugs={trips.map((t) => t.slug)} reducedMotion={profile.reducedMotion} />
+				<Room
+					shadows={profile.moonShadows}
+					earthTextures={profile.earthTextures}
+					skyEvents={ready}
+					bookCount={profile.bookCount}
+					tripSlugs={trips.map((t) => t.slug)}
+					reducedMotion={profile.reducedMotion}
+				/>
 				<Desk onClick={onClose} />
 				{/* Contact shadows: the scene is drawn from below into a small depth image, blurred,
 				    and laid on the desk as a soft dark halo under everything that touches it. */}
 				<ContactShadows
-					position={[0, 0.0005, DESK.centerZ]}
-					scale={[DESK.width, DESK.depth]}
+					// Just the working area around the map: the desk runs on far beyond the frame.
+					position={[0, 0.0005, -0.03]}
+					scale={[2.2, 1.2]}
 					resolution={profile.isMobile ? 256 : 512}
 					frames={profile.isMobile ? 1 : Infinity}
 					far={0.25}

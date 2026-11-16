@@ -16,8 +16,10 @@ export interface DeviceProfile {
 	bookCount: number;
 	/** Dust motes in the lamplight. */
 	dustCount: number;
-	/** The moonlight casts shadows (a second shadow map): desktop only. */
+	/** The light through the viewport casts shadows (a second shadow map): desktop only. */
 	moonShadows: boolean;
+	/** Earth's texture maps: sharper on desktop, lighter on phones. */
+	earthTextures: { day: string; night: string; clouds: string };
 	/** The visitor asked their OS for less motion: camera moves snap instead of gliding. */
 	reducedMotion: boolean;
 }
@@ -33,6 +35,9 @@ export function getDeviceProfile(): DeviceProfile {
 		bookCount: isMobile ? 140 : 240,
 		dustCount: isMobile ? 50 : 140,
 		moonShadows: !isMobile,
+		earthTextures: isMobile
+			? { day: '/space/earth-day-2k.webp', night: '/space/earth-night-2k.webp', clouds: '/space/earth-clouds-1k.webp' }
+			: { day: '/space/earth-day-4k.webp', night: '/space/earth-night-4k.webp', clouds: '/space/earth-clouds-2k.webp' },
 		reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 	};
 }

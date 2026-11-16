@@ -50,8 +50,8 @@ export const FOCUS_POLAR = deg(45);
  *
  * The lens is deliberately narrow (35°, like a 60 mm lens on a full-frame camera): a wide lens
  * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
- * game". On a wide screen the camera looks across the desk at 55°, far enough back that the whole
- * map, the lamp, both props and the room behind fit. A tall phone screen can't show a 1.4 m map
+ * game". On a wide screen the camera looks across the desk at 62°, far enough back that the whole
+ * map, the lamp and both props fit, with the viewport (and Earth) across the top of the frame. A tall phone screen can't show a 1.4 m map
  * across at a readable size, so it frames the stretch the trips cover (East Asia to the US, near
  * the middle of the Pacific-centred map) and lets the rest run off the sides: drag or zoom out
  * to see it all.
@@ -59,10 +59,10 @@ export const FOCUS_POLAR = deg(45);
 export function framingFor(aspect: number): Framing {
 	const portrait = aspect < 1;
 	const fov = portrait ? 48 : 35;
-	const polar = portrait ? deg(48) : deg(55);
-	const distance = portrait ? 1.75 : 2.2;
+	const polar = portrait ? deg(48) : deg(62);
+	const distance = portrait ? 1.75 : 2.3;
 	const azimuth = 0;
-	const target: [number, number, number] = portrait ? [0.09, 0, -0.06] : [0, 0, -0.04];
+	const target: [number, number, number] = portrait ? [0.09, 0, -0.06] : [0, 0, -0.22];
 	const [tx, ty, tz] = target;
 	// Spherical → x/y/z: the polar angle tilts down from straight up, the azimuth swings around
 	// the vertical axis from the front (+z).
@@ -86,14 +86,14 @@ export function framingFor(aspect: number): Framing {
 }
 
 /**
- * The opening shot, before the camera cranes up to the starting view: low across the desk at the
- * lamp, the window and the bookshelf, from a little to the right and further back.
+ * The opening shot, before the camera cranes down to the starting view: low across the desk and
+ * out through the viewport at Earth, from a little to the right.
  */
 export function establishingShot(framing: Framing): { position: [number, number, number]; target: [number, number, number] } {
 	const polar = ORBIT_LIMITS.maxPolarAngle - deg(1);
-	const azimuth = framing.portrait ? deg(30) : deg(18);
-	const distance = framing.maxDistance;
-	const target: [number, number, number] = [-0.1, 0.12, -0.25];
+	const azimuth = framing.portrait ? deg(14) : deg(12);
+	const distance = framing.portrait ? 2.6 : 2.4;
+	const target: [number, number, number] = [-0.55, 0.2, -0.6];
 	const horizontal = Math.sin(polar) * distance;
 	return {
 		position: [target[0] + Math.sin(azimuth) * horizontal, target[1] + Math.cos(polar) * distance, target[2] + Math.cos(azimuth) * horizontal],

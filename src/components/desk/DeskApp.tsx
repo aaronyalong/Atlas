@@ -77,7 +77,8 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 					// each light's shadow-radius does the softening now).
 					shadows="percentage"
 					dpr={profile.dpr}
-					camera={{ fov: framing.fov, near: 0.05, far: 20, position: framing.position }}
+					// Far plane: Earth and the stars are tens of metres outside the viewport.
+					camera={{ fov: framing.fov, near: 0.05, far: 200, position: framing.position }}
 					gl={{ antialias: true, powerPreference: 'high-performance' }}
 					// Tone mapping squeezes the scene's unlimited light range into what a screen can
 					// show. R3F defaults to ACES, which pushes warm light toward saturated orange; AgX
