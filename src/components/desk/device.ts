@@ -60,11 +60,25 @@ export function qualityLadder(profile: DeviceProfile): Quality[] {
 	return [...dprs.map((dpr) => ({ dpr, ao })), ...(ao ? [{ dpr: lowest, ao: false }] : []), { dpr: lowest * 0.85, ao: false }];
 }
 
-/** three.js renders with WebGL 2 only. */
-export function hasWebGL(): boolean {
-	try {
-		return !!document.createElement('canvas').getContext('webgl2');
-	} catch {
-		return false;
-	}
+/**
+ * Can this browser draw the desk? three.js needs WebGL 2. And if the browser would draw it on the
+ * processor rather than a graphics chip (hardware acceleration turned off, a blocked driver, some
+ * virtual machines), it runs at a frame or two a second: better to go straight to the list.
+ */
+export function webglSupport(): 'hardware' | 'software' | 'none' {
+	const probe = (attributes?: WebGLContextAttributes) => {
+		try {
+			return document.createElement('canvas').getContext('webgl2', attributes);
+		} catch {
+			return null;
+		}
+	};
+	// Asking to fail if there's a "major performance caveat" is how a page asks "is this software?".
+	const gl = probe({ failIfMajorPerformanceCaveat: true });
+	if (!gl) return probe() ? 'software' : 'none';
+	// Some browsers don't count their software renderer as a caveat: check its name too.
+	const info = gl.getExtension('WEBGL_debug_renderer_info');
+	const name = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+	gl.getExtension('WEBGL_lose_context')?.loseContext();
+	return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name) ? 'software' : 'hardware';
 }

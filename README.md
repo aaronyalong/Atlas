@@ -32,8 +32,11 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
   `pacing.ts` keeps it light when idle: about 60 frames a second while it's in use, 30 to 40
   while it sits still, and shadows drawn once, then again only when something casting one
   moves. An animation calls `wake()` each frame it runs, plus `refreshShadows()` if its object
-  casts a shadow. If frames are slow while it's in use, it steps down the quality ladder in
-  `device.ts` (resolution, then ambient occlusion); the browser remembers the step it settled on.
+  casts a shadow. It rests at 15 frames a second after 30 s untouched, and 10 while the window is
+  in the background. If frames are slow while it's in use, it steps down the quality ladder in
+  `device.ts` (resolution, then ambient occlusion); the browser remembers the step it settled on,
+  and if even the lowest is too slow, the desk offers the list of trips. Browsers that would draw
+  3D without a graphics card (`webglSupport()` in `device.ts`) get the list straight away.
 - `src/content/trips/`: one Markdown file per trip (schema in `src/content.config.ts`). Put a
   trip's photos in a folder next to it (e.g. `tokyo/cover.jpg`); they're re-encoded at build
   time, which strips EXIF/GPS, and the originals are never published.

@@ -114,6 +114,22 @@
 	color: var(--gold-bright);
 }
 
+/* Shown when even the lowest quality is too slow for this device (DeskApp.tsx). */
+.desk-slow {
+	margin-top: var(--space-2);
+	color: var(--ivory);
+	font-size: 0.78rem;
+	letter-spacing: 0.06em;
+	text-shadow:
+		0 1px 2px rgb(0 0 0 / 0.9),
+		0 0 12px rgb(0 0 0 / 0.75);
+}
+
+.desk-slow a {
+	color: var(--gold-bright);
+	font-weight: 600;
+}
+
 /* Buttons and links on the desk: gold-edged deco tags (with .deco-tag). */
 .desk-pill {
 	--fill: color-mix(in srgb, #0d0b09 72%, transparent);

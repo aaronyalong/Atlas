@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AgXToneMapping } from 'three';
 import { framingFor } from './camera';
-import { getDeviceProfile, hasWebGL, qualityLadder, type Quality } from './device';
+import { getDeviceProfile, qualityLadder, webglSupport, type Quality } from './device';
 import { FramePacer } from './pacing';
 import { Scene } from './Scene';
 import type { DeskMap, DeskTrip } from './types';
@@ -45,12 +45,15 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 	// Remembered in this browser, so coming back (from a trip's page, say) starts at the rung it
 	// settled on instead of stuttering down to it again.
 	const [ladder] = useState(() => qualityLadder(profile));
+	// One past the bottom rung means even the lowest quality is too slow: the HUD offers the list.
 	const [rung, setRung] = useState(() => savedRung(ladder));
-	const quality = ladder[rung];
-	const onSlow = useCallback(() => setRung((r) => Math.min(r + 1, ladder.length - 1)), [ladder]);
-	useEffect(() => saveRung(ladder, rung), [ladder, rung]);
+	const last = ladder.length - 1;
+	const quality = ladder[Math.min(rung, last)];
+	const tooSlow = rung > last;
+	const onSlow = useCallback(() => setRung((r) => Math.min(r + 1, last + 1)), [last]);
+	useEffect(() => saveRung(ladder, Math.min(rung, last)), [ladder, rung, last]);
 	const [framing, setFraming] = useState(() => framingFor(window.innerWidth / window.innerHeight));
-	const [webgl] = useState(hasWebGL);
+	const [webgl] = useState(webglSupport);
 	const [ready, setReady] = useState(false);
 	// The opened place and the hovered one (by pointer, over the map or a pin, or by keyboard
 	// focus). They live here, above the Canvas, so both the 3D scene and the HTML controls
@@ -95,7 +98,8 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 	// Reset view: closing a card already flies home (see CameraRig); otherwise go home directly.
 	const resetView = () => (selected ? close() : controlsRef.current?.reset(true));
 
-	if (!webgl) return <Fallback reason="Your browser can't show the 3D desk." />;
+	if (webgl === 'none') return <Fallback reason="Your browser can't show the 3D desk." />;
+	if (webgl === 'software') return <Fallback reason="Your browser is drawing 3D without a graphics card (is hardware acceleration turned off?), so the desk would crawl." />;
 
 	const places = trips.filter((t) => t.map);
 
@@ -172,6 +176,11 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 						Earth imagery: <a href="https://www.solarsystemscope.com/textures/">Solar System Scope</a>,{' '}
 						<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
 					</p>
+					{tooSlow && (
+						<p className="desk-slow" role="status">
+							Running slowly? <a href="/trips/">See the trips without 3D</a>
+						</p>
+					)}
 				</div>
 				<button type="button" className="deco-tag desk-pill" onClick={resetView}>
 					<ResetIcon />

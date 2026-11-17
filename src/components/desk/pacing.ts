@@ -11,7 +11,11 @@ import { Matrix4, type WebGLRenderer } from 'three';
  *        using the desk (pointer, wheel, keys), while the camera moves, and while anything calls
  *        wake() (a trip opening, the lamp fading, the gauges switching, a shooting star passing);
  *      - idle, about 30 to 40 a second: enough for the slow drift (Earth turning, dust in the
- *        sunbeam, the clocks' second hands) at half the work.
+ *        sunbeam, the clocks' second hands) at half the work;
+ *      - resting, 15 a second, once nobody has touched the desk for 30 s (reading, or gone), and
+ *        10 a second while the window is in the background (visible, but another one has focus).
+ *        Animations don't wake it from these: only the visitor does. (A hidden tab draws nothing:
+ *        the browser stops requestAnimationFrame.)
  *
  *    While awake it also watches how long frames take: if they're too slow (under about 55 a
  *    second), it calls onSlow, and DeskApp steps down a rung of the quality ladder (device.ts).
@@ -26,6 +30,11 @@ import { Matrix4, type WebGLRenderer } from 'three';
 const AWAKE_GAP = 1000 / 75;
 /** Shortest gap while idle: 30 a second on a 60 Hz screen, 40 on a 120 Hz one. */
 const IDLE_GAP = 1000 / 40;
+/** Gap once nobody has touched the desk for REST_AFTER ms: 15 a second. */
+const REST_GAP = 1000 / 15;
+const REST_AFTER = 30_000;
+/** Gap while the window doesn't have focus: 10 a second. */
+const BACKGROUND_GAP = 1000 / 10;
 /** How long a pointer move, wheel turn or key press keeps the desk awake (ms). */
 const INPUT_AWAKE = 600;
 /** How long the camera keeps the desk awake after it last moved (ms). */
@@ -71,7 +80,11 @@ export function FramePacer({ onSlow }: { onSlow?: () => void }) {
 		// Shadows draw every frame until the scene has loaded (Scene's <Ready> bakes them).
 		gl.shadowMap.autoUpdate = true;
 
-		const onInput = () => wake(INPUT_AWAKE);
+		let lastInput = performance.now();
+		const onInput = () => {
+			lastInput = performance.now();
+			wake(INPUT_AWAKE);
+		};
 		const inputs = ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart'] as const;
 		// Capture: seen before anything on the page can stop it.
 		for (const type of inputs) window.addEventListener(type, onInput, { passive: true, capture: true });
@@ -85,9 +98,10 @@ export function FramePacer({ onSlow }: { onSlow?: () => void }) {
 		let id = requestAnimationFrame(function tick(now) {
 			id = requestAnimationFrame(tick);
 			const gap = now - lastFrame;
-			const awake = now < awakeUntil;
+			const awake = document.hasFocus() && now - lastInput < REST_AFTER && now < awakeUntil;
+			const target = !document.hasFocus() ? BACKGROUND_GAP : now - lastInput >= REST_AFTER ? REST_GAP : awake ? AWAKE_GAP : IDLE_GAP;
 			// 1 ms of slack: rAF's timestamps jitter, and a 60 Hz frame mustn't be skipped for it.
-			if (gap < (awake ? AWAKE_GAP : IDLE_GAP) - 1) return;
+			if (gap < target - 1) return;
 
 			// Too slow? Only awake frames count (idle ones are slow on purpose), and not one-off
 			// stalls (a texture upload, a shader compiling): the slowest tenth of a sample is left
