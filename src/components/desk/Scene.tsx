@@ -27,6 +27,8 @@ const PICK_RADIUS = 0.06;
 
 interface SceneProps {
 	profile: DeviceProfile;
+	/** Ambient occlusion on (from the quality ladder). */
+	ao: boolean;
 	framing: Framing;
 	controlsRef: RefObject<CameraControlsImpl | null>;
 	trips: DeskTrip[];
@@ -64,7 +66,7 @@ interface SceneProps {
  *      reflect, and adds a faint image-based fill.
  * A light fog, starting well behind the desk, lets the far room recede without hiding it.
  */
-export function Scene({ profile, framing, controlsRef, trips, map, selected, hovered, onHover, onSelect, onClose, onReady, ready }: SceneProps) {
+export function Scene({ profile, ao, framing, controlsRef, trips, map, selected, hovered, onHover, onSelect, onClose, onReady, ready }: SceneProps) {
 	const size = useThree((state) => state.size);
 	const pinned = useMemo(() => trips.filter((t) => t.map).map((trip) => ({ trip, position: mapToDesk(map, trip.map!) })), [trips, map]);
 
@@ -166,7 +168,7 @@ export function Scene({ profile, framing, controlsRef, trips, map, selected, hov
 
 			<CameraRig controlsRef={controlsRef} framing={framing} reducedMotion={profile.reducedMotion} focus={focus} ready={ready} />
 			<Suspense fallback={null}>
-				<Effects profile={profile} focus={focus?.target ?? null} target={framing.target} />
+				<Effects profile={profile} ao={ao} focus={focus?.target ?? null} target={framing.target} />
 			</Suspense>
 		</>
 	);

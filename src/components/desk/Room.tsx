@@ -58,7 +58,7 @@ export function Room({ shadows, shadowMapSize, earthTextures, skyEvents, reduced
 			<Skirting />
 			<SpaceView textures={earthTextures} reducedMotion={reducedMotion} events={skyEvents} />
 			<Sunlight shadows={shadows} shadowMapSize={shadowMapSize} />
-			<SunBeam sun={SUN_POSITION} window={BEAM_WINDOW} steps={lite ? 0 : 24} motes={lite ? 60 : 150} reducedMotion={reducedMotion} />
+			<SunBeam sun={SUN_POSITION} window={BEAM_WINDOW} steps={lite ? 0 : 12} motes={lite ? 60 : 150} reducedMotion={reducedMotion} />
 			<CeilingLight shadowMapSize={shadowMapSize} />
 			<WallWashers />
 			{/* Earthlight: the planet below the window, lighting the room faintly blue from below. */}

@@ -64,7 +64,13 @@ uniform vec3 uPlaneN[6];
 uniform vec3 uPlaneP[6];
 varying vec3 vWorld;
 
-float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+// A hash without sin(): a few multiply-adds (Dave Hoskins' "hash without sine"). The noise below
+// calls it 8 times a step, so this is most of the shaft's cost.
+float hash(vec3 p) {
+	p = fract(p * 0.1031);
+	p += dot(p, p.zyx + 31.32);
+	return fract((p.x + p.y) * p.z);
+}
 float noise(vec3 p) {
 	vec3 i = floor(p);
 	vec3 f = fract(p);

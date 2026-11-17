@@ -5,6 +5,8 @@ import type { DeviceProfile } from './device';
 
 interface EffectsProps {
 	profile: DeviceProfile;
+	/** Ambient occlusion on (the quality ladder can turn it off: device.ts). */
+	ao: boolean;
 	/** Where an opened polaroid is held, or null: the point the lens focuses on. */
 	focus: Vector3Tuple | null;
 	/** What the lens focuses on when nothing is open: the camera's orbit target. */
@@ -21,8 +23,8 @@ interface EffectsProps {
  * at the end puts AgX back.
  *
  *   - N8AO (ambient occlusion): darkens creases and the places where objects meet, from every
- *     direction, which a single light's shadow can't do. Desktop only: it reads depth and
- *     normals many times per pixel.
+ *     direction, which a single light's shadow can't do. Desktop only, and the last thing to go
+ *     on a slow GPU: it reads depth and normals many times per pixel.
  *   - Depth of field: blurs what's further from the focus point than a real lens would keep
  *     sharp. Gentle at the desk (Earth outside should still read), stronger while a place is
  *     open. Focus follows the opened place. Desktop only (it blurs the frame several times).
@@ -32,11 +34,11 @@ interface EffectsProps {
  *   - Noise: light film grain. It also hides the banding that smooth dark gradients show on
  *     8-bit screens.
  */
-export function Effects({ profile, focus, target }: EffectsProps) {
+export function Effects({ profile, ao, focus, target }: EffectsProps) {
 	const mobile = profile.isMobile;
 	return (
 		<EffectComposer multisampling={mobile ? 0 : 4}>
-			{mobile ? <></> : <N8AO quality="medium" aoRadius={0.12} distanceFalloff={0.4} intensity={2.5} halfRes />}
+			{!ao ? <></> : <N8AO quality="medium" aoRadius={0.12} distanceFalloff={0.4} intensity={2.5} halfRes />}
 			{mobile ? (
 				<></>
 			) : (

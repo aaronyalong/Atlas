@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AgXToneMapping } from 'three';
 import { framingFor } from './camera';
-import { getDeviceProfile, hasWebGL } from './device';
+import { getDeviceProfile, hasWebGL, qualityLadder, type Quality } from './device';
 import { FramePacer } from './pacing';
 import { Scene } from './Scene';
 import type { DeskMap, DeskTrip } from './types';
@@ -17,9 +17,38 @@ import type { DeskMap, DeskTrip } from './types';
  * the site's CSS. If there's no WebGL, or the scene crashes, the visitor gets a short note and
  * the link to the plain list of trips instead.
  */
+const QUALITY_KEY = 'desk-quality';
+
+/** The rung this browser settled on last time, if its ladder (screen, device) is the same. */
+function savedRung(ladder: Quality[]): number {
+	try {
+		const saved = JSON.parse(localStorage.getItem(QUALITY_KEY) ?? 'null');
+		if (saved?.ladder === JSON.stringify(ladder) && Number.isInteger(saved.rung)) return Math.min(Math.max(saved.rung, 0), ladder.length - 1);
+	} catch {
+		// No storage (private mode, blocked): start at the top.
+	}
+	return 0;
+}
+
+function saveRung(ladder: Quality[], rung: number) {
+	try {
+		localStorage.setItem(QUALITY_KEY, JSON.stringify({ ladder: JSON.stringify(ladder), rung }));
+	} catch {
+		// Not remembered; it steps down again next time.
+	}
+}
+
 export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMap }) {
 	// Read once from the browser at startup. (Safe: client:only never runs this on the server.)
 	const [profile] = useState(getDeviceProfile);
+	// The quality rung: starts at the best and steps down while frames are too slow (device.ts).
+	// Remembered in this browser, so coming back (from a trip's page, say) starts at the rung it
+	// settled on instead of stuttering down to it again.
+	const [ladder] = useState(() => qualityLadder(profile));
+	const [rung, setRung] = useState(() => savedRung(ladder));
+	const quality = ladder[rung];
+	const onSlow = useCallback(() => setRung((r) => Math.min(r + 1, ladder.length - 1)), [ladder]);
+	useEffect(() => saveRung(ladder, rung), [ladder, rung]);
 	const [framing, setFraming] = useState(() => framingFor(window.innerWidth / window.innerHeight));
 	const [webgl] = useState(hasWebGL);
 	const [ready, setReady] = useState(false);
@@ -80,7 +109,7 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 					// FramePacer draws the frames: about 60 a second while the desk is in use, fewer
 					// while it sits still (pacing.ts).
 					frameloop="never"
-					dpr={profile.dpr}
+					dpr={quality.dpr}
 					// Far plane: Earth and the stars are tens of metres outside the viewport.
 					camera={{ fov: framing.fov, near: 0.05, far: 200, position: framing.position }}
 					gl={{ antialias: true, powerPreference: 'high-performance' }}
@@ -95,9 +124,10 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 					// A click that hits nothing at all (the dark room) also closes the card.
 					onPointerMissed={close}
 				>
-					<FramePacer />
+					<FramePacer onSlow={onSlow} />
 					<Scene
 						profile={profile}
+						ao={quality.ao}
 						framing={framing}
 						controlsRef={controlsRef}
 						trips={trips}
