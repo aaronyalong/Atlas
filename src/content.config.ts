@@ -13,7 +13,7 @@ const trips = defineCollection({
 	loader: glob({ pattern: '**/*.md', base: './src/content/trips' }),
 	schema: ({ image }) =>
 		z.object({
-			/** The main name, e.g. "Tokyo" or "Zion National Park". */
+			/** The main name, e.g. "Tokyo" or "Southern Utah". */
 			title: z.string(),
 			/** Where it is, e.g. "Japan" or "Utah". */
 			place: z.string(),

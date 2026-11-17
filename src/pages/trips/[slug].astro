@@ -238,6 +238,10 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		}
 	}
 
+	.photos li {
+		width: min(17rem, 100%);
+	}
+
 	/* A polaroid: white border, deeper at the bottom, a slight tilt, tape holding it down. */
 	.print {
 		position: relative;
@@ -412,10 +416,11 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		margin-top: var(--space-12);
 	}
 
-	/* Prints of a set width, centred: two or three sit in the middle of the sheet, not to one side. */
+	/* Prints of a set width, in centred rows: a short last row (one print under two) sits in the
+	   middle of the sheet, not to one side. */
 	.photos ul {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 17rem));
+		display: flex;
+		flex-wrap: wrap;
 		justify-content: center;
 		gap: var(--space-12) var(--space-8);
 		padding: var(--space-4) 0 0;
