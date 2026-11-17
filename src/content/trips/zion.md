@@ -5,5 +5,3 @@ lat: 37.2982
 lng: -113.0263
 timeZone: America/Denver
 ---
-
-<!-- TODO: journal text for this trip. -->

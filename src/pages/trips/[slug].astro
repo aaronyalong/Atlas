@@ -5,7 +5,8 @@
  * the journal with a deco drop cap, and the rest of the photos as taped polaroids with
  * handwritten captions. Then on to the next trip.
  *
- * Anything not written yet shows as a visible TODO (the deploy check refuses to ship those).
+ * Missing dates or photos show as a visible TODO. The blurb and journal are optional: without
+ * them, they're left out.
  * Every photo goes through astro:assets, which re-encodes it and strips EXIF/GPS metadata; the
  * original file is never published.
  */
@@ -98,23 +99,19 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 						</figure>
 					)
 				}
-				<p class="blurb">{blurb ?? <span class="todo">TODO: blurb</span>}</p>
+				{blurb && <p class="blurb">{blurb}</p>}
 			</aside>
 		</div>
 
-		<section class="journal" aria-label="Journal">
-			{
-				journal ? (
+		{
+			journal && (
+				<section class="journal" aria-label="Journal">
 					<div class="prose">
 						<Content />
 					</div>
-				) : (
-					<p>
-						<span class="todo">TODO: journal text</span>
-					</p>
-				)
-			}
-		</section>
+				</section>
+			)
+		}
 
 		<section class="photos" aria-label="Photos">
 			{
@@ -322,6 +319,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 	}
 
 	.stamp {
+		justify-self: center;
 		margin: 0;
 		padding: 10px 10px 8px;
 		background: #fbfaf6;
@@ -414,9 +412,11 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		margin-top: var(--space-12);
 	}
 
+	/* Prints of a set width, centred: two or three sit in the middle of the sheet, not to one side. */
 	.photos ul {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 17rem));
+		justify-content: center;
 		gap: var(--space-12) var(--space-8);
 		padding: var(--space-4) 0 0;
 		list-style: none;

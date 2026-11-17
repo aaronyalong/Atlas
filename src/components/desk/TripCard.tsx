@@ -29,7 +29,8 @@ export function TripCard({ trip, onClose }: { trip: DeskTrip; onClose: () => voi
 				{trip.title}
 			</h2>
 			<p className="trip-card-dates">{trip.dates ?? <span className="todo">TODO: dates</span>}</p>
-			<p className="trip-card-blurb">{trip.blurb ?? <span className="todo">TODO: blurb</span>}</p>
+			{/* Optional: without one, the space stays empty and the link keeps its place at the foot. */}
+			<p className="trip-card-blurb">{trip.blurb}</p>
 			<a className="deco-tag trip-card-open" href={trip.href}>
 				Open trip <span aria-hidden="true">→</span>
 			</a>

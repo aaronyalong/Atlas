@@ -50,7 +50,7 @@ const tilt = (i: number) => [-2.4, 1.8, -1.2, 2.2, -1.6, 1.1][i % 6];
 								<a href={tripHref(trip)}>{trip.data.title}</a>
 							</h2>
 							<p class="caps dates">{dates ?? <span class="todo">TODO: dates</span>}</p>
-							<p class="blurb">{trip.data.blurb ?? <span class="todo">TODO: blurb</span>}</p>
+							{trip.data.blurb && <p class="blurb">{trip.data.blurb}</p>}
 						</div>
 					</li>
 				);

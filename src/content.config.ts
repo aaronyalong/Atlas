@@ -4,10 +4,10 @@ import { z } from 'astro/zod';
 
 /**
  * Trips: one Markdown file per trip in src/content/trips/. The file name is the trip's URL slug
- * (tokyo.md → /trips/tokyo/). The Markdown body is the trip's journal text (phase 4).
+ * (tokyo.md → /trips/tokyo/). The Markdown body is the trip's journal text, optional.
  *
- * Only title, place and coordinates are required. Anything left out shows as a visible TODO on
- * the site rather than being made up.
+ * Only title, place and coordinates are required. Missing dates or photos show as a visible TODO
+ * on the site rather than being made up; a missing blurb or journal is simply left out.
  */
 const trips = defineCollection({
 	loader: glob({ pattern: '**/*.md', base: './src/content/trips' }),

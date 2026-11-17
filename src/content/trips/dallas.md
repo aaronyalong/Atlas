@@ -5,5 +5,3 @@ lat: 32.7767
 lng: -96.797
 timeZone: America/Chicago
 ---
-
-<!-- TODO: journal text for this trip. -->

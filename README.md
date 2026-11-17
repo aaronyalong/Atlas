@@ -96,9 +96,10 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
    get a clock.
 2. Put its photos in `src/content/trips/<slug>/` and reference them as `cover` (with
    `coverAlt`) and `photos` (with `alt`, optional `caption`). The cover and up to five more rise
-   out of the map when the place is clicked. They're re-encoded at build time; EXIF and GPS are
-   stripped.
-3. Write the journal as the file's Markdown body.
+   out of the map when the place is clicked. They're re-encoded at build time, so the site never
+   shows EXIF or GPS, but the files themselves are committed to a public repo: strip them first
+   (`npm run check:exif` fails on any that still carry metadata).
+3. Optionally, a `blurb` and a journal (the file's Markdown body); without them, they're left out.
 4. If it's outside the map's crop, the build warns: widen `src/lib/map/config.ts` and run
    `npm run map`. Run `npm run og` to put its pin on the link-preview card.
 
