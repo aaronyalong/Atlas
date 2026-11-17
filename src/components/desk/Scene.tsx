@@ -8,6 +8,7 @@ import { Desk } from './Desk';
 import { GaugePanel } from './Gauges';
 import type { DeviceProfile } from './device';
 import { PALETTE } from './palette';
+import { bakeShadows } from './pacing';
 import { Pins } from './Pins';
 import { Room } from './Room';
 import { revealCentre, revealLayout, TripReveal } from './TripReveal';
@@ -171,11 +172,17 @@ export function Scene({ profile, framing, controlsRef, trips, map, selected, hov
 	);
 }
 
-/** Waits two animation frames (the first frame drawn, then painted), then reports ready. */
+/**
+ * Waits two animation frames (the first frame drawn, then painted), then reports ready. Everything
+ * that casts a shadow is in place by then, so the shadow maps stop being redrawn every frame.
+ */
 function Ready({ onReady }: { onReady: () => void }) {
 	useEffect(() => {
 		let id = requestAnimationFrame(() => {
-			id = requestAnimationFrame(onReady);
+			id = requestAnimationFrame(() => {
+				bakeShadows();
+				onReady();
+			});
 		});
 		return () => cancelAnimationFrame(id);
 	}, [onReady]);

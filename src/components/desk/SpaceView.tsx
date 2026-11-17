@@ -18,6 +18,7 @@ import {
 	Vector3,
 	type Vector3Tuple,
 } from 'three';
+import { wake } from './pacing';
 import { seededRandom } from './polaroidTexture';
 
 /*
@@ -282,7 +283,8 @@ function SkyEvents() {
 	}, []);
 
 	useFrame((_, delta) => {
-		if (active) return;
+		// Something passing: draw it at the full frame rate.
+		if (active) return wake();
 		next.current -= delta;
 		if (next.current <= 0) {
 			setActive({ kind: SEQUENCE[index.current % SEQUENCE.length], id: index.current, slow: 1 });

@@ -2,6 +2,7 @@ import { Html, useCursor } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import { ImageLoader, MathUtils, type Group, type Vector3Tuple } from 'three';
+import { refreshShadows, wake } from './pacing';
 import { createPolaroidFront, loadCaptionFont, POLAROID_SIZE } from './polaroidTexture';
 import { TripCard } from './TripCard';
 import type { DeskTrip } from './types';
@@ -91,9 +92,12 @@ export function TripReveal({ trip, anchor, layout, open, onClose, onClosed, text
 		if (open) closedFired.current = false;
 		else setZoomed(null);
 	}, [open]);
+	// Gone: redraw the shadows without the prints.
+	useEffect(() => () => refreshShadows(), []);
 
 	useFrame((_, delta) => {
 		const k = reducedMotion ? Infinity : 6;
+		const before = rise.current + spread.current + zoom.current.reduce((sum, z) => sum + z, 0);
 		// Opening: rise first, then spread. Closing: gather first, then sink.
 		rise.current = MathUtils.damp(rise.current, open || spread.current > 0.08 ? 1 : 0, k, delta);
 		spread.current = MathUtils.damp(spread.current, open && rise.current > 0.6 ? 1 : 0, k, delta);
@@ -119,6 +123,12 @@ export function TripReveal({ trip, anchor, layout, open, onClose, onClosed, text
 			g.rotation.z = target.turn * si * (1 - z);
 			g.scale.setScalar(1 + z * 0.5);
 		});
+
+		// Still moving: full frame rate, and the prints' shadows follow them.
+		if (Math.abs(rise.current + spread.current + zoom.current.reduce((sum, z) => sum + z, 0) - before) > 1e-5) {
+			wake();
+			refreshShadows();
+		}
 
 		const show = open && s > 0.95;
 		if (show !== cardShown) setCardShown(show);

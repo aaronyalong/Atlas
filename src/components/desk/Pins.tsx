@@ -2,6 +2,7 @@ import { Html, useCursor } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { DoubleSide, MathUtils, type Group, type Mesh, type MeshBasicMaterial } from 'three';
+import { refreshShadows, wake } from './pacing';
 import { seededRandom } from './polaroidTexture';
 import type { DeskMap, DeskTrip } from './types';
 import { mapToDesk } from './WorldMap';
@@ -98,7 +99,15 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 
 	useFrame(({ clock }, delta) => {
 		const l = lifter.current;
-		if (l) l.position.y = MathUtils.damp(l.position.y, lifted ? HOVER_LIFT : 0, reducedMotion ? Infinity : EASE, delta);
+		if (l) {
+			const y = MathUtils.damp(l.position.y, lifted ? HOVER_LIFT : 0, reducedMotion ? Infinity : EASE, delta);
+			// Moving: full frame rate, and the pin's shadow follows it.
+			if (Math.abs(y - l.position.y) > 1e-6) {
+				wake();
+				refreshShadows();
+			}
+			l.position.y = y;
+		}
 		// The ripple: a ring that grows and fades every 2.6 s; faster and brighter when hovered.
 		const r = ring.current;
 		if (r) {

@@ -2,6 +2,7 @@ import { Html, useCursor } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import { BackSide, DoubleSide, MathUtils, Object3D, type Group, type MeshStandardMaterial, type PointLight, type SpotLight, type Vector3Tuple } from 'three';
+import { wake } from './pacing';
 import { PALETTE } from './palette';
 
 /*
@@ -49,7 +50,9 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 	const level = useRef(1);
 
 	useFrame(({ clock }, delta) => {
+		const level0 = level.current;
 		level.current = MathUtils.damp(level.current, on ? 1 : 0, reducedMotion ? Infinity : 10, delta);
+		if (Math.abs(level.current - level0) > 1e-5) wake();
 		const k = level.current;
 		if (spot.current) spot.current.intensity = 2.4 * k;
 		if (glow.current) glow.current.intensity = 0.2 * k;

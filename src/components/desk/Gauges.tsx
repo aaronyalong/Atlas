@@ -2,6 +2,7 @@ import { Html, RoundedBox, useCursor } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CanvasTexture, MathUtils, SRGBColorSpace, type Group, type MeshStandardMaterial } from 'three';
+import { wake } from './pacing';
 import { OPENING, WALL_Z } from './roomLayout';
 import type { DeskTrip } from './types';
 import { BRASS, BRONZE } from './Viewport';
@@ -229,6 +230,8 @@ export function GaugePanel({ trips, reducedMotion }: GaugePanelProps) {
 		const t = clock.elapsedTime;
 		const wanted = world ? 1 : 0;
 		const since = switchStart.current === null ? Infinity : performance.now() / 1000 - switchStart.current;
+		// Switching modes: the spin and the flicker run at the full frame rate.
+		if (since < SWITCH + 0.6) wake();
 
 		CENTRES.forEach((_, i) => {
 			// This gauge's part of the change-over: 0 → 1, staggered down the panel.

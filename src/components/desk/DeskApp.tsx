@@ -4,6 +4,7 @@ import { Component, useCallback, useEffect, useRef, useState, type ReactNode } f
 import { AgXToneMapping } from 'three';
 import { framingFor } from './camera';
 import { getDeviceProfile, hasWebGL } from './device';
+import { FramePacer } from './pacing';
 import { Scene } from './Scene';
 import type { DeskMap, DeskTrip } from './types';
 
@@ -76,6 +77,9 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 					// "percentage" = PCF shadows (three.js removed the old "soft" PCF type in r18x;
 					// each light's shadow-radius does the softening now).
 					shadows="percentage"
+					// FramePacer draws the frames: about 60 a second while the desk is in use, fewer
+					// while it sits still (pacing.ts).
+					frameloop="never"
 					dpr={profile.dpr}
 					// Far plane: Earth and the stars are tens of metres outside the viewport.
 					camera={{ fov: framing.fov, near: 0.05, far: 200, position: framing.position }}
@@ -91,6 +95,7 @@ export default function DeskApp({ trips, map }: { trips: DeskTrip[]; map: DeskMa
 					// A click that hits nothing at all (the dark room) also closes the card.
 					onPointerMissed={close}
 				>
+					<FramePacer />
 					<Scene
 						profile={profile}
 						framing={framing}

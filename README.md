@@ -29,6 +29,10 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
   Earth, the stars and the passing events are `SpaceView.tsx`; the desk is `Desk.tsx`; the lamp
   is `BankersLamp.tsx`; the shaft of sunlight and its dust are `SunBeam.tsx`; the map and its
   pins are `WorldMap.tsx` and `Pins.tsx`; what opens when a place is clicked is `TripReveal.tsx`.
+  `pacing.ts` keeps it light when idle: about 60 frames a second while it's in use, 30 to 40
+  while it sits still, and shadows drawn once, then again only when something casting one
+  moves. An animation calls `wake()` each frame it runs, plus `refreshShadows()` if its object
+  casts a shadow.
 - `src/content/trips/`: one Markdown file per trip (schema in `src/content.config.ts`). Put a
   trip's photos in a folder next to it (e.g. `tokyo/cover.jpg`); they're re-encoded at build
   time, which strips EXIF/GPS, and the originals are never published.
