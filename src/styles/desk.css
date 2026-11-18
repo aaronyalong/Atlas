@@ -493,6 +493,86 @@
 	outline-offset: 3px;
 }
 
+/* ---------- Prints (a trip's photos, beside its card) ----------
+ * A Polaroid 600 at 5 px a millimetre: 440 × 535, a 395 px square picture with 22.5 px borders
+ * (30 px at the top) and the wide strip below for a caption. drei's <Html transform> scales it
+ * into the scene (TripReveal.tsx). A button: a click brings it forward, another puts it back.
+ */
+.desk-print {
+	position: relative;
+	display: block;
+	width: 440px;
+	height: 535px;
+	padding: 30px 22.5px 0;
+	border: 0;
+	background: linear-gradient(180deg, #fbfaf6, #f1eee6);
+	box-shadow:
+		0 0 0 1px rgb(0 0 0 / 0.06),
+		0 24px 40px -18px rgb(0 0 0 / 0.55);
+	color: var(--ink);
+	font: inherit;
+	cursor: zoom-in;
+}
+
+.desk-print.is-zoomed {
+	cursor: zoom-out;
+}
+
+/* Handled: the corners rubbed a little grey. */
+.desk-print::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background:
+		radial-gradient(circle at 0 0, rgb(70 60 50 / 0.14), transparent 34px),
+		radial-gradient(circle at 100% 0, rgb(70 60 50 / 0.09), transparent 30px),
+		radial-gradient(circle at 0 100%, rgb(70 60 50 / 0.1), transparent 38px),
+		radial-gradient(circle at 100% 100%, rgb(70 60 50 / 0.16), transparent 34px);
+}
+
+.desk-print img,
+.desk-print-placeholder {
+	display: block;
+	width: 395px;
+	height: 395px;
+	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.desk-print img {
+	object-fit: cover;
+	background: #e8e4da;
+}
+
+.desk-print-placeholder {
+	display: grid;
+	place-items: center;
+	background: linear-gradient(180deg, hsl(212 22% 22%), hsl(218 16% 46%));
+}
+
+.desk-print-placeholder .todo {
+	border-color: rgb(255 255 255 / 0.75);
+	color: #fff;
+	font-size: 22px;
+}
+
+/* The caption: handwritten in the strip, slightly off level (set per print). */
+.desk-print-caption {
+	display: block;
+	height: 110px;
+	color: var(--ink);
+	font-family: var(--font-hand);
+	font-weight: 600;
+	line-height: 110px;
+	white-space: nowrap;
+	opacity: 0.88;
+}
+
+.desk-print:focus-visible {
+	outline: 3px solid var(--gold-bright);
+	outline-offset: 4px;
+}
+
 /* ---------- Pin labels (a deco tag, with .deco-tag) ----------
  * Each place's name, always on show next to its pin (screen-space, so always upright). Placed
  * above, beside, at a corner or below, whichever keeps it clear of the other names and pins

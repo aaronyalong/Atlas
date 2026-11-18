@@ -1,17 +1,27 @@
-import { Html, useCursor } from '@react-three/drei';
-import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
-import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
-import { ImageLoader, MathUtils, type Group, type Vector3Tuple } from 'three';
+import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react';
+import { MathUtils, type Group, type Vector3Tuple } from 'three';
 import { refreshShadows, wake } from './pacing';
-import { createPolaroidFront, loadCaptionFont, POLAROID_SIZE } from './polaroidTexture';
+import { POLAROID_SIZE, seededRandom } from './polaroid';
 import { TripCard } from './TripCard';
 import type { DeskMap, DeskTrip } from './types';
 
 /*
- * What opens when a place on the map is clicked: the trip's photos rise out of the map at its
- * pin, the stack tips up toward the camera and fans out into a spread of prints, and the trip's
- * card (dates, blurb, the link to its page) appears beside them. A click on a print brings it
- * forward; another puts it back. Closing plays it all in reverse, back into the map.
+ * What opens when a place on the map is clicked: the trip's first photos rise out of the map at
+ * its pin, the stack tips up toward the camera and fans out into a spread of prints, and the
+ * trip's card (dates, how long, how many photos, the link to its page) appears beside them. A
+ * click on a print brings it forward; another puts it back. Closing plays it all in reverse, back
+ * into the map.
+ *
+ * A preview, not the whole trip: the cover and the next two photos. The trip's page has them all,
+ * large.
+ *
+ * The prints and the card are HTML placed in 3D (drei's <Html transform>), not textures: the
+ * browser draws them, so they stay as sharp as the page's text whatever resolution the 3D scene
+ * is drawn at (the quality ladder lowers it on slower GPUs) and whatever its effects (depth of
+ * field, film grain) do to everything else. Each print has an invisible card of its own size
+ * behind it in the scene, so it still casts its shadow on the map.
  *
  * Everything is laid out on a "presentation plane": a sheet of space that starts flat on the map
  * at the pin and rises to hang in front of the camera, tilted to face it (the camera looks down
@@ -23,7 +33,9 @@ const LIFT = 0.12;
 const FORWARD = 0.05;
 /** Facing a camera that looks down at 45°, nudged a little past it so it reads as an object. */
 const TILT = -Math.PI / 4 + 0.07;
-const MAX_PRINTS = 6;
+/** The preview: the cover and the next two. */
+const MAX_PRINTS = 3;
+/** The card and each print are laid out 440 px wide (desk.css) and scaled to a print's width. */
 const CARD_WIDTH_PX = 440;
 const CARD_DISTANCE_FACTOR = (400 * W) / CARD_WIDTH_PX;
 
@@ -73,14 +85,10 @@ interface TripRevealProps {
 	open: boolean;
 	onClose: () => void;
 	onClosed: () => void;
-	textureWidth: number;
 	reducedMotion: boolean;
 }
 
-export function TripReveal({ trip, map, anchor, layout, open, onClose, onClosed, textureWidth, reducedMotion }: TripRevealProps) {
-	// Captions are handwritten: wait for the font before drawing any print.
-	use(loadCaptionFont(trip.photos.map((p) => p.caption ?? '').join('') || 'A'));
-
+export function TripReveal({ trip, map, anchor, layout, open, onClose, onClosed, reducedMotion }: TripRevealProps) {
 	const plane = useRef<Group>(null);
 	const prints = useRef<(Group | null)[]>([]);
 	const rise = useRef(0);
@@ -89,6 +97,12 @@ export function TripReveal({ trip, map, anchor, layout, open, onClose, onClosed,
 	const closedFired = useRef(false);
 	const [cardShown, setCardShown] = useState(false);
 	const [zoomed, setZoomed] = useState<number | null>(null);
+	// The print last brought forward stays on top of the others while it goes back.
+	const [onTop, setOnTop] = useState<number | null>(null);
+	const toggleZoom = (i: number) => {
+		setOnTop(i);
+		setZoomed((z) => (z === i ? null : i));
+	};
 
 	useEffect(() => {
 		if (open) closedFired.current = false;
@@ -145,31 +159,23 @@ export function TripReveal({ trip, map, anchor, layout, open, onClose, onClosed,
 	return (
 		<group position={anchor}>
 			<group ref={plane}>
-				{layout.prints.map((_, i) => {
-					const photo = photos[i];
-					const print = (
+				{layout.prints.map((_, i) => (
+					<group key={i} ref={(g) => void (prints.current[i] = g)}>
 						<Print
+							photo={photos[i] ?? null}
 							seed={`${trip.slug}:${i}`}
-							caption={photo?.caption ?? ''}
-							textureWidth={textureWidth}
-							onClick={() => setZoomed((z) => (z === i ? null : i))}
+							// Later prints over earlier ones; the one last brought forward over them all.
+							layer={onTop === i ? 10 : 2 + i}
+							zoomed={zoomed === i}
+							onClick={() => toggleZoom(i)}
 						/>
-					);
-					return (
-						<group key={i} ref={(g) => void (prints.current[i] = g)}>
-							{photo ? (
-								<Suspense fallback={<Print seed={`${trip.slug}:${i}`} caption="" textureWidth={textureWidth} blank />}>
-									<PhotoPrint src={photo.src} seed={`${trip.slug}:${i}`} caption={photo.caption ?? ''} textureWidth={textureWidth} onClick={() => setZoomed((z) => (z === i ? null : i))} />
-								</Suspense>
-							) : (
-								print
-							)}
-						</group>
-					);
-				})}
+					</group>
+				))}
 				{cardShown && (
 					<Html transform distanceFactor={CARD_DISTANCE_FACTOR} position={[layout.card.x, layout.card.y, 0.002]} zIndexRange={[1, 0]}>
-						<TripCard trip={trip} map={map} onClose={onClose} />
+						<div onPointerDown={keepFromScene} onClick={keepFromScene}>
+							<TripCard trip={trip} map={map} onClose={onClose} />
+						</div>
 					</Html>
 				)}
 			</group>
@@ -177,59 +183,59 @@ export function TripReveal({ trip, map, anchor, layout, open, onClose, onClosed,
 	);
 }
 
-interface PrintProps {
-	seed: string;
-	caption: string;
-	textureWidth: number;
-	image?: HTMLImageElement | null;
-	/** A plain print while the photo loads. */
-	blank?: boolean;
-	onClick?: () => void;
-}
-
-/** Loads the photo, then draws the print. useLoader suspends until the image has arrived. */
-function PhotoPrint({ src, ...props }: PrintProps & { src: string }) {
-	const image = useLoader(ImageLoader, src);
-	return <Print {...props} image={image} />;
-}
-
-/** One print: a white-bordered photo (or the TODO placeholder) on thin card. */
-function Print({ seed, caption, textureWidth, image = null, blank = false, onClick }: PrintProps) {
-	const gl = useThree((state) => state.gl);
-	const [hovered, setHovered] = useState(false);
-	useCursor(hovered && !!onClick);
-	const front = useMemo(() => {
-		if (blank) return null;
-		const t = createPolaroidFront({ width: textureWidth, photo: image, caption, seed });
-		t.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
-		return t;
-	}, [blank, textureWidth, image, caption, seed, gl]);
-	useEffect(() => () => front?.dispose(), [front]);
-
+/** One print: a white-bordered photo (or the TODO placeholder) with its caption, as HTML. */
+function Print({ photo, seed, layer, zoomed, onClick }: { photo: DeskTrip['photos'][number] | null; seed: string; layer: number; zoomed: boolean; onClick: () => void }) {
+	// The caption, written by hand: a little off centre and off level, the same on every visit.
+	const hand = useMemo(() => {
+		const rand = seededRandom(seed);
+		return `translateX(${((rand() - 0.5) * 30).toFixed(1)}px) rotate(${((rand() - 0.5) * 5).toFixed(2)}deg)`;
+	}, [seed]);
+	const caption = photo?.caption ?? '';
 	return (
-		<mesh
-			castShadow
-			onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-				e.stopPropagation();
-				setHovered(true);
-			}}
-			onPointerOut={() => setHovered(false)}
-			onClick={(e: ThreeEvent<MouseEvent>) => {
-				e.stopPropagation();
-				if (e.delta <= 4) onClick?.();
-			}}
-		>
-			<boxGeometry args={[W, H, T]} />
-			{[0, 1, 2, 3, 5].map((i) => (
-				<meshStandardMaterial key={i} attach={`material-${i}`} color="#eeeae0" roughness={0.85} />
-			))}
-			{/* Held up to the camera, a print faces away from the lights behind it; a faint glow of its
-			    own (the print as its own emissive map) keeps the photo readable. */}
-			{front ? (
-				<meshStandardMaterial attach="material-4" map={front} emissive="#ffffff" emissiveMap={front} emissiveIntensity={0.45} roughness={0.6} />
-			) : (
-				<meshStandardMaterial attach="material-4" color="#f3f0e8" roughness={0.8} />
-			)}
-		</mesh>
+		<>
+			{/* Its shadow on the map: an invisible card the print's size. */}
+			<mesh castShadow>
+				<boxGeometry args={[W, H, T]} />
+				<meshBasicMaterial colorWrite={false} depthWrite={false} />
+			</mesh>
+			<Html transform distanceFactor={CARD_DISTANCE_FACTOR} position={[0, 0, T / 2]} zIndexRange={[layer, layer]}>
+				<button
+					type="button"
+					className={`desk-print${zoomed ? ' is-zoomed' : ''}`}
+					onPointerDown={keepFromScene}
+					onClick={(e) => {
+						keepFromScene(e);
+						onClick();
+					}}
+					aria-pressed={zoomed}
+					aria-label={photo ? `${zoomed ? 'Put back' : 'Bring forward'}: ${photo.alt}` : 'No photo yet'}
+				>
+					{photo ? (
+						<img src={photo.src} alt="" draggable={false} decoding="async" />
+					) : (
+						<span className="desk-print-placeholder">
+							<span className="todo">TODO: photo</span>
+						</span>
+					)}
+					<span className="desk-print-caption" style={{ transform: hand, fontSize: captionSize(caption) }} aria-hidden="true">
+						{caption}
+					</span>
+				</button>
+			</Html>
+		</>
 	);
+}
+
+/**
+ * The prints and the card are HTML over the canvas, so a press or click on them would bubble up
+ * to the scene's own handlers, which would see the map underneath and close the trip (or start
+ * turning the camera). They stop here.
+ */
+function keepFromScene(e: SyntheticEvent) {
+	e.stopPropagation();
+}
+
+/** Caveat at up to 52 px, smaller for a long caption so it fits the strip (about 360 px). */
+function captionSize(caption: string) {
+	return `${Math.min(52, Math.round(360 / (Math.max(1, caption.length) * 0.43)))}px`;
 }

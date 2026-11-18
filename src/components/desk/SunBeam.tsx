@@ -1,7 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Vector3, type PerspectiveCamera, type ShaderMaterial, type Vector3Tuple } from 'three';
-import { seededRandom } from './polaroidTexture';
+import { seededRandom } from './polaroid';
 
 /*
  * The sunbeam: the shaft of sunlight from the viewport down onto the desk, made visible by the

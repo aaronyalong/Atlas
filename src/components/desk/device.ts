@@ -11,8 +11,6 @@ export interface DeviceProfile {
 	maxDpr: number;
 	/** Size (px) of the ceiling light's shadow map. Bigger = sharper shadow edges, more GPU memory. */
 	shadowMapSize: number;
-	/** Width (px) of the textures drawn for photo prints. */
-	printTextureWidth: number;
 	/** The light through the viewport casts shadows (a second shadow map): desktop only. */
 	moonShadows: boolean;
 	/** Earth's texture maps: sharper on desktop, lighter on phones. */
@@ -28,7 +26,6 @@ export function getDeviceProfile(): DeviceProfile {
 		isMobile,
 		maxDpr: 1.5,
 		shadowMapSize: isMobile ? 1024 : 2048,
-		printTextureWidth: isMobile ? 448 : 640,
 		moonShadows: !isMobile,
 		earthTextures: isMobile
 			? { day: '/space/earth-day-2k.webp', night: '/space/earth-night-2k.webp', clouds: '/space/earth-clouds-1k.webp' }

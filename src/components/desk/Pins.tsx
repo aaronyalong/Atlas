@@ -5,7 +5,7 @@ import { DoubleSide, MathUtils, type Group, type Mesh, type MeshBasicMaterial } 
 import type { Framing } from './camera';
 import { LABEL_HEIGHT, placeLabels, type LabelSide } from './labels';
 import { refreshShadows, wake } from './pacing';
-import { seededRandom } from './polaroidTexture';
+import { seededRandom } from './polaroid';
 import type { DeskMap, DeskTrip } from './types';
 import { mapToDesk } from './WorldMap';
 

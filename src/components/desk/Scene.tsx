@@ -161,7 +161,6 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 						open={selected === reveal.trip.slug}
 						onClose={onClose}
 						onClosed={() => setRevealing((r) => (r === reveal.trip.slug ? null : r))}
-						textureWidth={profile.printTextureWidth}
 						reducedMotion={profile.reducedMotion}
 					/>
 				</Suspense>
