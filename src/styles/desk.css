@@ -460,6 +460,9 @@
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
 	white-space: nowrap;
+	/* Clickable, like the pin (its <Html> wrapper lets everything else through to the canvas). */
+	pointer-events: auto;
+	cursor: pointer;
 	transition: color 0.2s ease;
 }
 

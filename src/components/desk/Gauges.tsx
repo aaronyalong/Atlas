@@ -1,7 +1,8 @@
 import { Html, RoundedBox, useCursor } from '@react-three/drei';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CanvasTexture, MathUtils, SRGBColorSpace, type Group, type MeshStandardMaterial } from 'three';
+import { CanvasTexture, MathUtils, PerspectiveCamera, Plane, Ray, SRGBColorSpace, Vector3, type Group, type MeshStandardMaterial } from 'three';
+import type { Framing } from './camera';
 import { wake } from './pacing';
 import { OPENING, WALL_Z } from './roomLayout';
 import type { DeskTrip } from './types';
@@ -9,10 +10,11 @@ import { BRASS, BRONZE } from './Viewport';
 
 /*
  * The gauge panel: an art deco bronze plate on the wall to the right of the viewport, with five
- * brass-bezelled instruments stacked down it, their ivory dials softly lit from behind.
+ * brass-bezelled instruments set like the five on a die (two, one, two), their ivory dials softly
+ * lit from behind.
  *
  * Two modes, swapped with a click:
- *   - Station: the top dial is a clock showing the visitor's own time; the other four are the
+ *   - Station: the middle dial is a clock showing the visitor's own time; the other four are the
  *     station's instruments (cabin temperature, oxygen, altitude, speed), their needles
  *     trembling a little as real ones do.
  *   - World time: all five become clocks showing the time now at each trip's place (from the
@@ -23,12 +25,33 @@ import { BRASS, BRONZE } from './Viewport';
  * Dials are drawn on canvases (one per dial, per mode); the hands are thin boxes turned each frame.
  */
 
-/** Where the panel hangs: right of the window, low enough to stay clear of the page's top bar. */
-const PANEL_X = OPENING.right + 0.28;
+/** Where the panel hangs: its left edge just right of the window, low enough to clear the page's top bar. */
+const PANEL_LEFT = OPENING.right + 0.07;
 const PANEL_Z = WALL_Z + 0.02;
-/** The gauges' centres, top to bottom, and their size. */
-const CENTRES = [0.59, 0.47, 0.35, 0.23, 0.11];
-const RADIUS = 0.048;
+/**
+ * The dials' radius at full size: big enough to read the clocks from the starting view. On a
+ * squarer screen (4:3) that would run off the right edge, so there the whole panel is scaled down
+ * to fit (fitPanel), but never below the size it used to be.
+ */
+const RADIUS = 0.085;
+/** The parts were first drawn for 0.048 m dials: hands and caps scale with the dial. */
+const SCALE = RADIUS / 0.048;
+/** Brass between neighbouring bezels. */
+const SPACING = 0.02;
+/**
+ * The gauges' centres (x, y on the plate): the middle one first (it's the station's clock), then
+ * the top pair and the bottom pair, each a bezel's width and a bit from its neighbours.
+ */
+const DX = RADIUS + SPACING / 2;
+const DY = Math.sqrt((2 * RADIUS + SPACING) ** 2 - DX ** 2);
+const BOTTOM = 0.15;
+const CENTRES: [number, number][] = [
+	[0, BOTTOM + DY],
+	[-DX, BOTTOM + 2 * DY],
+	[DX, BOTTOM + 2 * DY],
+	[-DX, BOTTOM],
+	[DX, BOTTOM],
+];
 const DIAL_PX = 512;
 /** Seconds for the change-over (the last gauge starts a little after the first). */
 const SWITCH = 1.6;
@@ -44,6 +67,29 @@ const STATION: Dial[] = [
 	{ kind: 'meter', label: 'Altitude', unit: 'km', min: 300, max: 500, value: 408, wobble: 1.2, majors: 4 },
 	{ kind: 'meter', label: 'Velocity', unit: 'km/s', min: 7, max: 8, value: 7.66, wobble: 0.008, majors: 5 },
 ];
+
+const PLATE_WIDTH = 2 * DX + RADIUS * 2 + 0.05;
+const MIN_FIT = 0.6;
+
+/**
+ * How much to scale the panel so it ends just inside the right edge of the screen at the starting
+ * view: 1 (full size) on a laptop or desktop screen, less on a squarer one. Phones (portrait) start
+ * looking at the map, not the wall, so they keep the full size.
+ */
+function fitPanel(framing: Framing, aspect: number) {
+	if (framing.portrait) return 1;
+	const camera = new PerspectiveCamera(framing.fov, aspect, 0.05, 200);
+	camera.position.set(...framing.position);
+	camera.lookAt(...framing.target);
+	camera.updateMatrixWorld();
+	// The screen's right edge, at the panel's middle height, where it meets the wall.
+	const middle = new Vector3(PANEL_LEFT, 0.35, PANEL_Z).project(camera);
+	const through = new Vector3(0.97, middle.y, 0.5).unproject(camera);
+	const ray = new Ray(camera.position.clone(), through.sub(camera.position).normalize());
+	const hit = ray.intersectPlane(new Plane(new Vector3(0, 0, 1), -PANEL_Z), new Vector3());
+	if (!hit) return 1;
+	return MathUtils.clamp((hit.x - PANEL_LEFT) / PLATE_WIDTH, MIN_FIT, 1);
+}
 
 /* ---------- Time ---------- */
 
@@ -176,10 +222,14 @@ function makeDialTexture(dial: Dial, meridiem: string): CanvasTexture {
 
 interface GaugePanelProps {
 	trips: DeskTrip[];
+	/** The starting view: the panel is sized to fit on screen in it. */
+	framing: Framing;
 	reducedMotion: boolean;
 }
 
-export function GaugePanel({ trips, reducedMotion }: GaugePanelProps) {
+export function GaugePanel({ trips, framing, reducedMotion }: GaugePanelProps) {
+	const size = useThree((state) => state.size);
+	const fit = useMemo(() => fitPanel(framing, size.width / size.height), [framing, size]);
 	const [world, setWorld] = useState(false);
 	const [hovered, setHovered] = useState(false);
 	useCursor(hovered);
@@ -287,13 +337,15 @@ export function GaugePanel({ trips, reducedMotion }: GaugePanelProps) {
 		});
 	});
 
-	const plateHeight = CENTRES[0] - CENTRES[4] + RADIUS * 2 + 0.05;
-	const plateY = (CENTRES[0] + CENTRES[4]) / 2;
+	const plateWidth = PLATE_WIDTH;
+	const plateHeight = 2 * DY + RADIUS * 2 + 0.05;
+	const plateY = BOTTOM + DY;
 	const plateTop = plateY + plateHeight / 2;
 
 	return (
 		<group
-			position={[PANEL_X, 0, PANEL_Z]}
+			position={[PANEL_LEFT + (plateWidth / 2) * fit, 0, PANEL_Z]}
+			scale={fit}
 			onPointerOver={(e: ThreeEvent<PointerEvent>) => {
 				e.stopPropagation();
 				setHovered(true);
@@ -305,34 +357,34 @@ export function GaugePanel({ trips, reducedMotion }: GaugePanelProps) {
 			}}
 		>
 			{/* The plate: bronze, with brass pinstripes down its edges and a stepped crown and foot. */}
-			<RoundedBox args={[0.15, plateHeight, 0.014]} radius={0.005} smoothness={2} position={[0, plateY, 0.007]} material={BRONZE} castShadow receiveShadow />
+			<RoundedBox args={[plateWidth, plateHeight, 0.014]} radius={0.005} smoothness={2} position={[0, plateY, 0.007]} material={BRONZE} castShadow receiveShadow />
 			{[-1, 1].map((s) => (
-				<mesh key={s} position={[s * 0.066, plateY, 0.0145]} material={BRASS}>
+				<mesh key={s} position={[s * (plateWidth / 2 - 0.009), plateY, 0.0145]} material={BRASS}>
 					<boxGeometry args={[0.004, plateHeight - 0.02, 0.003]} />
 				</mesh>
 			))}
 			{[
-				[0.11, 0.022],
-				[0.07, 0.02],
-				[0.03, 0.018],
+				[plateWidth * 0.73, 0.022],
+				[plateWidth * 0.47, 0.02],
+				[plateWidth * 0.2, 0.018],
 			].map(([w, hgt], i, steps) => {
 				const y = plateTop + steps.slice(0, i).reduce((sum, [, sh]) => sum + sh, 0) + hgt / 2;
 				return <RoundedBox key={i} args={[w, hgt, 0.012]} radius={0.003} smoothness={2} position={[0, y, 0.006]} material={i % 2 ? BRONZE : BRASS} />;
 			})}
-			<RoundedBox args={[0.11, 0.016, 0.012]} radius={0.003} smoothness={2} position={[0, plateY - plateHeight / 2 - 0.008, 0.006]} material={BRASS} />
+			<RoundedBox args={[plateWidth * 0.73, 0.016, 0.012]} radius={0.003} smoothness={2} position={[0, plateY - plateHeight / 2 - 0.008, 0.006]} material={BRASS} />
 
-			{CENTRES.map((y, i) => (
-				<group key={i} position={[0, y, 0.014]}>
+			{CENTRES.map(([x, y], i) => (
+				<group key={i} position={[x, y, 0.014]}>
 					{/* Brass cup and bezel. */}
 					<mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.006]} material={BRASS}>
 						<cylinderGeometry args={[RADIUS, RADIUS, 0.012, 48, 1, true]} />
 					</mesh>
 					<mesh position={[0, 0, 0.012]} material={BRASS}>
-						<torusGeometry args={[RADIUS - 0.002, 0.005, 12, 48]} />
+						<torusGeometry args={[RADIUS - 0.003, 0.007, 12, 64]} />
 					</mesh>
 					{/* The dial, lit from behind. */}
 					<mesh position={[0, 0, 0.004]}>
-						<circleGeometry args={[RADIUS - 0.004, 48]} />
+						<circleGeometry args={[RADIUS - 0.005, 64]} />
 						<meshStandardMaterial
 							ref={(m) => {
 								dialMaterials.current[i] = m;
@@ -345,16 +397,16 @@ export function GaugePanel({ trips, reducedMotion }: GaugePanelProps) {
 						/>
 					</mesh>
 					{/* Hands: blackened steel, a red second hand, a brass cap. */}
-					<Hand ref={(g) => (hands.current[i].hour = g)} length={0.024} width={0.0042} tail={0.005} z={0.006} colour="#15130f" />
-					<Hand ref={(g) => (hands.current[i].minute = g)} length={0.036} width={0.003} tail={0.006} z={0.0072} colour="#15130f" />
-					<Hand ref={(g) => (hands.current[i].second = g)} length={0.039} width={0.0011} tail={0.011} z={0.0084} colour="#8f2a1c" />
-					<Hand ref={(g) => (hands.current[i].needle = g)} length={0.037} width={0.0026} tail={0.008} z={0.0072} colour="#15130f" />
+					<Hand ref={(g) => (hands.current[i].hour = g)} length={0.024 * SCALE} width={0.0042 * SCALE} tail={0.005 * SCALE} z={0.006} colour="#15130f" />
+					<Hand ref={(g) => (hands.current[i].minute = g)} length={0.036 * SCALE} width={0.003 * SCALE} tail={0.006 * SCALE} z={0.0072} colour="#15130f" />
+					<Hand ref={(g) => (hands.current[i].second = g)} length={0.039 * SCALE} width={0.0011 * SCALE} tail={0.011 * SCALE} z={0.0084} colour="#8f2a1c" />
+					<Hand ref={(g) => (hands.current[i].needle = g)} length={0.037 * SCALE} width={0.0026 * SCALE} tail={0.008 * SCALE} z={0.0072} colour="#15130f" />
 					<mesh position={[0, 0, 0.0095]} rotation={[Math.PI / 2, 0, 0]} material={BRASS}>
-						<cylinderGeometry args={[0.0035, 0.0035, 0.003, 16]} />
+						<cylinderGeometry args={[0.0035 * SCALE, 0.0035 * SCALE, 0.003, 16]} />
 					</mesh>
 					{/* Glass. */}
 					<mesh position={[0, 0, 0.0125]}>
-						<circleGeometry args={[RADIUS - 0.003, 48]} />
+						<circleGeometry args={[RADIUS - 0.004, 64]} />
 						<meshStandardMaterial color="#ffffff" transparent opacity={0.07} roughness={0.15} metalness={0} depthWrite={false} />
 					</mesh>
 				</group>

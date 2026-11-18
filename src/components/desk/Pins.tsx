@@ -166,9 +166,19 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 				</group>
 
 				{!anySelected && (
-					// Screen-space label (no `transform`): always upright and readable.
+					// Screen-space label (no `transform`): always upright and readable. Clicking or hovering
+					// it does what the pin does. Hidden from screen readers and the tab order: DeskApp's
+					// list of places already gives each place a button.
 					<Html position={[0, LABEL_HEIGHT, 0]} zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
-						<span className={`deco-tag pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}>{trip.title}</span>
+						<span
+							className={`deco-tag pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}
+							aria-hidden="true"
+							onPointerEnter={() => onHover(trip.slug)}
+							onPointerLeave={() => onHover(null)}
+							onClick={() => onSelect(trip.slug)}
+						>
+							{trip.title}
+						</span>
 					</Html>
 				)}
 			</group>

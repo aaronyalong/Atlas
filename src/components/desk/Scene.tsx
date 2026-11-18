@@ -128,7 +128,7 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 				/>
 				<Desk onClick={onClose} reflections={!profile.isMobile} />
 				<BankersLamp shadowMapSize={profile.shadowMapSize} reducedMotion={profile.reducedMotion} />
-				<GaugePanel trips={trips} reducedMotion={profile.reducedMotion} />
+				<GaugePanel trips={trips} framing={framing} reducedMotion={profile.reducedMotion} />
 				<WorldMap
 					map={map}
 					onHover={(uv) => onHover(uv ? nearest(uv) : null)}
