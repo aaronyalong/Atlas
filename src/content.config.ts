@@ -48,9 +48,9 @@ const trips = defineCollection({
 			/** Describes the cover photo for screen readers. Required once there's a cover. */
 			coverAlt: z.string().optional(),
 			/**
-			 * More photos, in order: all of them on the trip's page; the first two, with the cover,
-			 * fanned out over the map when the trip's pin is opened (a preview). Paths relative to the
-			 * trip file, like `cover`; re-encoded the same way, so EXIF and GPS are stripped.
+			 * More photos, in order, on the trip's page (the desk previews a trip with its cover
+			 * alone). Paths relative to the trip file, like `cover`; re-encoded the same way, so EXIF
+			 * and GPS are stripped.
 			 */
 			photos: z
 				.array(

@@ -8,14 +8,13 @@ import { TripCard } from './TripCard';
 import type { DeskMap, DeskTrip } from './types';
 
 /*
- * What opens when a place on the map is clicked: the trip's first photos rise out of the map at
- * its pin, the stack tips up toward the camera and fans out into a spread of prints, and the
- * trip's card (dates, how long, how many photos, the link to its page) appears beside them. A
- * click on a print brings it forward; another puts it back. Closing plays it all in reverse, back
- * into the map.
+ * What opens when a place on the map is clicked: the trip's cover rises out of the map at its pin
+ * as a print and tips up toward the camera, and the trip's card (dates, how long, how many photos,
+ * the link to its page) appears beside it, like a postcard. A click on the print brings it forward;
+ * another puts it back. Closing plays it all in reverse, back into the map.
  *
- * A preview, not the whole trip: the cover and the next two photos. The trip's page has them all,
- * large.
+ * A preview, not the whole trip: just the cover. The trip's page has every photo, large. (The
+ * layout can still fan out several prints: raise MAX_PRINTS.)
  *
  * The prints and the card are HTML placed in 3D (drei's <Html transform>), not textures: the
  * browser draws them, so they stay as sharp as the page's text whatever resolution the 3D scene
@@ -33,8 +32,8 @@ const LIFT = 0.12;
 const FORWARD = 0.05;
 /** Facing a camera that looks down at 45°, nudged a little past it so it reads as an object. */
 const TILT = -Math.PI / 4 + 0.07;
-/** The preview: the cover and the next two. */
-const MAX_PRINTS = 3;
+/** The preview: the cover alone. */
+const MAX_PRINTS = 1;
 /** The card and each print are laid out 440 px wide (desk.css) and scaled to a print's width. */
 const CARD_WIDTH_PX = 440;
 const CARD_DISTANCE_FACTOR = (400 * W) / CARD_WIDTH_PX;
