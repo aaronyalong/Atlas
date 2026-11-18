@@ -16,7 +16,7 @@ import type { DeskMap, DeskTrip } from '../components/desk/types';
 import { MAP } from '../lib/map/config';
 import { createMapSheet, locate } from '../lib/map/projection';
 import { PORTFOLIO_URL } from '../lib/site';
-import { formatTripDates, getTrips, tripHref } from '../lib/trips';
+import { formatTripDates, getTrips, tripDays, tripHref } from '../lib/trips';
 import '../styles/desk.css';
 
 /*
@@ -47,6 +47,7 @@ const deskTrips: DeskTrip[] = await Promise.all(
 			title,
 			place,
 			dates: formatTripDates(trip),
+			days: tripDays(trip),
 			blurb: blurb ?? null,
 			href: tripHref(trip),
 			photos: prints,

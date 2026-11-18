@@ -17,8 +17,8 @@ import { BRASS, BRONZE } from './Viewport';
  *   - Station: the middle dial is a clock showing the visitor's own time; the other four are the
  *     station's instruments (cabin temperature, oxygen, altitude, speed), their needles
  *     trembling a little as real ones do.
- *   - World time: all five become clocks showing the time now at each trip's place (from the
- *     trips' `timeZone`).
+ *   - World time: all five become clocks showing the time now in each time zone the trips were in
+ *     (from the trips' `timeZone`), named after the trips there.
  * Switching, the needles spin round several times and the backlights flicker as the dials change
  * over, one gauge after another. For visitors who ask for less motion, they just change.
  *
@@ -57,6 +57,7 @@ const DIAL_PX = 512;
 const SWITCH = 1.6;
 
 type Dial =
+	/** A clock's label can be two names, one per line, separated by a newline. */
 	| { kind: 'clock'; label: string; zone: string | null }
 	| { kind: 'meter'; label: string; unit: string; min: number; max: number; value: number; wobble: number; majors: number };
 
@@ -150,16 +151,21 @@ function drawDial(canvas: HTMLCanvasElement, dial: Dial, meridiem: string) {
 		ctx.lineTo(c + Math.cos(angle) * r1, c + Math.sin(angle) * r1);
 		ctx.stroke();
 	};
+	/** The font, shrunk until every one of `lines` fits in maxWidth. */
+	const fitted = (lines: string[], font: string, maxWidth: number) => {
+		let px = Number(/(\d+(\.\d+)?)px/.exec(font)?.[1] ?? 20);
+		ctx.font = font;
+		while (lines.some((s) => ctx.measureText(s).width > maxWidth) && px > 8) {
+			px -= 1;
+			ctx.font = font.replace(/\d+(\.\d+)?px/, `${px}px`);
+		}
+		return ctx.font;
+	};
 	const text = (s: string, x: number, y: number, font: string, colour = ink, maxWidth = r * 1.15) => {
 		ctx.fillStyle = colour;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
-		let px = Number(/(\d+(\.\d+)?)px/.exec(font)?.[1] ?? 20);
-		ctx.font = font;
-		while (ctx.measureText(s).width > maxWidth && px > 8) {
-			px -= 1;
-			ctx.font = font.replace(/\d+(\.\d+)?px/, `${px}px`);
-		}
+		ctx.font = fitted([s], font, maxWidth);
 		ctx.fillText(s, x, y);
 	};
 	const spaced = (s: string) => s.toUpperCase().split('').join(' ');
@@ -180,7 +186,15 @@ function drawDial(canvas: HTMLCanvasElement, dial: Dial, meridiem: string) {
 			text(n as string, c + Math.cos(a) * r * 0.56, c + Math.sin(a) * r * 0.56, `700 ${r * 0.22}px ${NUMERAL_FONT}`);
 		});
 		text(meridiem, c, c - r * 0.3, `700 ${r * 0.11}px ${LABEL_FONT}`, '#5a4a2c');
-		text(spaced(dial.label), c, c + r * 0.32, `700 ${r * 0.13}px ${LABEL_FONT}`);
+		// The place: one name, or two (a line each) when two trips share the time zone.
+		const names = dial.label.split('\n');
+		if (names.length === 1) text(spaced(names[0]), c, c + r * 0.32, `700 ${r * 0.13}px ${LABEL_FONT}`);
+		else {
+			// Both at the same size: whatever the longer one needs.
+			const lines = names.slice(0, 2).map(spaced);
+			const font = fitted(lines, `700 ${r * 0.11}px ${LABEL_FONT}`, r * 1.1);
+			lines.forEach((line, i) => text(line, c, c + r * (0.27 + i * 0.15), font, ink, r * 1.1));
+		}
 	} else {
 		// A 270° scale from lower left, round over the top, to lower right.
 		const start = Math.PI * 0.75;
@@ -234,10 +248,14 @@ export function GaugePanel({ trips, framing, reducedMotion }: GaugePanelProps) {
 	const [hovered, setHovered] = useState(false);
 	useCursor(hovered);
 
-	// World time: a clock for each trip with a time zone (the first five); any spare dials show
-	// the visitor's own time.
+	// World time: a clock for each time zone the trips were in (the most recent trips' first, up to
+	// five), named after the trips there: two names on one dial when two trips share a zone
+	// (Portland and Northern California), so no clock repeats another. Any spare dials show the
+	// visitor's own time.
 	const worldDials = useMemo<Dial[]>(() => {
-		const clocks: Dial[] = trips.filter((t) => t.timeZone).slice(0, 5).map((t) => ({ kind: 'clock', label: t.title, zone: t.timeZone }));
+		const zones = new Map<string, string[]>();
+		for (const t of trips) if (t.timeZone) zones.set(t.timeZone, [...(zones.get(t.timeZone) ?? []), t.title]);
+		const clocks: Dial[] = [...zones].slice(0, 5).map(([zone, names]) => ({ kind: 'clock', label: names.slice(0, 2).join('\n'), zone }));
 		while (clocks.length < 5) clocks.push({ kind: 'clock', label: 'Local time', zone: null });
 		return clocks;
 	}, [trips]);

@@ -40,6 +40,13 @@ export function formatCoordinates(lat: number, lng: number): string {
 	return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lng).toFixed(2)}° ${ew}`;
 }
 
+/** How many days the trip ran, counting both ends (Mar 3 – 10 is 8), or null without dates. */
+export function tripDays(trip: Trip): number | null {
+	const { start, end } = trip.data;
+	if (!start) return null;
+	return Math.round(((end ?? start).getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
 /** "Mar 3 – 10, 2025", "Mar 3, 2025", or null when the trip has no dates yet. */
 export function formatTripDates(trip: Trip): string | null {
 	const { start, end } = trip.data;

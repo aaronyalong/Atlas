@@ -155,6 +155,7 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 					<TripReveal
 						key={reveal.trip.slug}
 						trip={reveal.trip}
+						map={map}
 						anchor={reveal.position}
 						layout={layout}
 						open={selected === reveal.trip.slug}

@@ -9,6 +9,8 @@ export interface DeskTrip {
 	title: string;
 	place: string;
 	dates: string | null;
+	/** How many days it ran (both ends counted), or null without dates. */
+	days: number | null;
 	blurb: string | null;
 	/** The trip's page. */
 	href: string;

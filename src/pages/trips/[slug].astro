@@ -3,7 +3,9 @@
  * One trip's scrapbook page: a sheet of ivory card framed in gold (the desk's art deco), with the
  * cover photo taped on as a polaroid, a postage-stamp locator cut from the desk's map, the blurb,
  * the journal with a deco drop cap, and the rest of the photos as taped polaroids with
- * handwritten captions. Then on to the next trip.
+ * handwritten captions. Then on to the next trip. Clicking a photo opens it large (a <dialog>),
+ * with the arrow keys or buttons stepping through the rest; without JavaScript, each photo links
+ * to its large version.
  *
  * Missing dates or photos show as a visible TODO. The blurb and journal are optional: without
  * them, they're left out.
@@ -55,6 +57,11 @@ const preview = cover
 		}
 	: undefined;
 
+// Every photo at a large size, for the viewer: the cover, then the gallery.
+const large = async (src: ImageMetadata) => (await getImage({ src, width: 2000, format: 'webp', quality: 82 })).src;
+const coverLarge = cover ? await large(cover) : undefined;
+const photosLarge = await Promise.all(photos.map((p) => large(p.src)));
+
 // Small deterministic tilts, so the prints look placed by hand rather than on a grid.
 const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 ---
@@ -79,7 +86,9 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 				<span class="tape tape-r" aria-hidden="true"></span>
 				{
 					cover ? (
-						<Image src={cover} alt={coverAlt ?? ''} width={1100} class="photo" />
+						<a class="zoom" href={coverLarge} data-caption="">
+							<Image src={cover} alt={coverAlt ?? ''} width={1100} class="photo" />
+						</a>
 					) : (
 						<div class="photo placeholder">
 							<span class="todo">TODO: cover photo</span>
@@ -121,7 +130,9 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 							<li>
 								<figure class="print" style={`--tilt: ${tilt(i + 1)}deg`}>
 									<span class="tape tape-c" aria-hidden="true" />
-									<Image src={photo.src} alt={photo.alt} width={700} class="photo" />
+									<a class="zoom" href={photosLarge[i]} data-caption={photo.caption ?? ''}>
+										<Image src={photo.src} alt={photo.alt} width={700} class="photo" />
+									</a>
 									{photo.caption && <figcaption>{photo.caption}</figcaption>}
 								</figure>
 							</li>
@@ -135,6 +146,27 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 			}
 		</section>
 	</article>
+
+	{
+		(cover || photos.length > 0) && (
+			<dialog class="viewer" aria-label="Photo">
+				<figure>
+					<img alt="" />
+					<figcaption />
+				</figure>
+				<p class="viewer-count" aria-live="polite" />
+				<button type="button" class="viewer-close deco-tag" aria-label="Close">
+					×
+				</button>
+				<button type="button" class="viewer-prev deco-tag" aria-label="Previous photo">
+					←
+				</button>
+				<button type="button" class="viewer-next deco-tag" aria-label="Next photo">
+					→
+				</button>
+			</dialog>
+		)
+	}
 
 	<nav class="pager" aria-label="More trips">
 		<a class="deco-tag" href={tripHref(previous)} rel="prev"><span aria-hidden="true">←</span> {tripName(previous)}</a>
@@ -456,7 +488,152 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		outline: none;
 	}
 
+	/* The photos open in the viewer. */
+	.zoom {
+		display: block;
+		cursor: zoom-in;
+	}
+
+	.zoom:focus-visible {
+		outline: 2px solid var(--gold-ink);
+		outline-offset: 4px;
+	}
+
+	/* The viewer: one photo at a time, large, on the dark room. */
+	.viewer {
+		width: 100vw;
+		max-width: none;
+		height: 100dvh;
+		max-height: none;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: var(--ivory);
+	}
+
+	.viewer::backdrop {
+		background: rgb(10 8 6 / 0.96);
+	}
+
+	.viewer[open] {
+		display: grid;
+		place-items: center;
+	}
+
+	.viewer figure {
+		display: grid;
+		justify-items: center;
+		gap: var(--space-3);
+		margin: 0;
+		padding: 3.5rem 1rem 4.5rem;
+	}
+
+	.viewer img {
+		display: block;
+		max-width: min(92vw, 80rem);
+		max-height: calc(100dvh - 9rem);
+		width: auto;
+		height: auto;
+		box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.9);
+	}
+
+	.viewer figcaption {
+		font-family: var(--font-hand);
+		font-size: 1.6rem;
+		font-weight: 600;
+	}
+
+	.viewer figcaption:empty {
+		display: none;
+	}
+
+	.viewer-count {
+		position: fixed;
+		top: 1.4rem;
+		left: 50%;
+		transform: translateX(-50%);
+		color: color-mix(in srgb, var(--ivory) 70%, transparent);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.2em;
+	}
+
+	.viewer button {
+		--cut: 8px;
+		position: fixed;
+		display: grid;
+		place-items: center;
+		width: 3rem;
+		height: 3rem;
+		border: 0;
+		color: var(--ivory);
+		font: inherit;
+		font-size: 1.3rem;
+		cursor: pointer;
+	}
+
+	.viewer button:hover,
+	.viewer button:focus-visible {
+		--line: var(--gold-bright);
+		--fill: color-mix(in srgb, #2a1f12 92%, transparent);
+		color: var(--gold-bright);
+		outline: none;
+	}
+
+	.viewer-close {
+		top: 1rem;
+		right: 1rem;
+	}
+
+	.viewer-prev,
+	.viewer-next {
+		top: calc(50% - 1.5rem);
+	}
+
+	.viewer-prev {
+		left: 1rem;
+	}
+
+	.viewer-next {
+		right: 1rem;
+	}
+
+	/* On a phone the arrows sit under the photo, not over it. */
+	@media (max-width: 40rem) {
+		.viewer-prev,
+		.viewer-next {
+			top: auto;
+			bottom: 1rem;
+		}
+
+		.viewer-prev {
+			left: calc(50% - 3.5rem);
+		}
+
+		.viewer-next {
+			right: calc(50% - 3.5rem);
+		}
+	}
+
+	.viewer[data-single] .viewer-prev,
+	.viewer[data-single] .viewer-next,
+	.viewer[data-single] .viewer-count {
+		display: none;
+	}
+
 	@media (prefers-reduced-motion: no-preference) {
+		.viewer[open] img {
+			animation: viewer-in 0.25s var(--ease-out);
+		}
+
+		@keyframes viewer-in {
+			from {
+				opacity: 0;
+				transform: scale(0.98);
+			}
+		}
+
 		.print {
 			transition: transform 0.3s var(--ease-out);
 		}
@@ -466,3 +643,48 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		}
 	}
 </style>
+
+<script>
+	// The photo viewer: open the clicked photo in the <dialog>, step with the arrows (buttons or
+	// keys), close with Esc, the × or a click outside the photo. Focus goes back to the photo.
+	const viewer = document.querySelector<HTMLDialogElement>('dialog.viewer');
+	const links = [...document.querySelectorAll<HTMLAnchorElement>('a.zoom')];
+	if (viewer && links.length > 0 && typeof viewer.showModal === 'function') {
+		const img = viewer.querySelector('img')!;
+		const caption = viewer.querySelector('figcaption')!;
+		const count = viewer.querySelector('.viewer-count')!;
+		let current = 0;
+		const show = (i: number) => {
+			current = (i + links.length) % links.length;
+			const link = links[current];
+			img.src = link.href;
+			img.alt = link.querySelector('img')?.alt ?? '';
+			caption.textContent = link.dataset.caption ?? '';
+			count.textContent = `${current + 1} / ${links.length}`;
+		};
+		viewer.toggleAttribute('data-single', links.length === 1);
+		links.forEach((link, i) =>
+			link.addEventListener('click', (event) => {
+				if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+				event.preventDefault();
+				show(i);
+				viewer.showModal();
+			}),
+		);
+		viewer.querySelector('.viewer-close')!.addEventListener('click', () => viewer.close());
+		viewer.querySelector('.viewer-prev')!.addEventListener('click', () => show(current - 1));
+		viewer.querySelector('.viewer-next')!.addEventListener('click', () => show(current + 1));
+		viewer.addEventListener('keydown', (event) => {
+			if (event.key === 'ArrowLeft') show(current - 1);
+			else if (event.key === 'ArrowRight') show(current + 1);
+		});
+		// A click on the dark around the photo (the dialog itself, not its contents) closes it.
+		viewer.addEventListener('click', (event) => {
+			if (event.target === viewer || event.target === viewer.querySelector('figure')) viewer.close();
+		});
+		viewer.addEventListener('close', () => {
+			links[current].focus({ preventScroll: true });
+			img.removeAttribute('src');
+		});
+	}
+</script>

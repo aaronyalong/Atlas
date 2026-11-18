@@ -385,10 +385,59 @@
 	text-transform: uppercase;
 }
 
-.trip-card-blurb {
+/* Between the dates and the link: the blurb or the locator stamp, then the facts. */
+.trip-card-middle {
+	display: flex;
 	flex: 1;
-	margin-top: 20px;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 18px;
+	min-height: 0;
+	margin-block: 18px;
+}
+
+.trip-card-blurb {
 	overflow: hidden;
+}
+
+/* The locator: a postage stamp with perforated edges, as on the trip's page. */
+.trip-card-stamp {
+	padding: 9px 9px 10px;
+	background: #fbfaf6;
+	mask:
+		radial-gradient(circle 5px at 50% 0, transparent 98%, #000) 0 0 / 14px 51% repeat-x,
+		radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) 0 100% / 14px 51% repeat-x;
+	filter: drop-shadow(0 5px 8px rgb(0 0 0 / 0.25));
+	transform: rotate(-3deg);
+}
+
+.trip-card-stamp-picture {
+	position: relative;
+	background-color: var(--navy);
+	background-repeat: no-repeat;
+}
+
+/* A brass map pin, as on the desk. */
+.trip-card-stamp-pin {
+	position: absolute;
+	top: calc(50% - 7px);
+	left: calc(50% - 7px);
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 35% 30%, #fff1c9, #c9a45c 45%, #6f4f1d);
+	box-shadow:
+		0 0 0 2px rgb(251 250 246 / 0.85),
+		0 2px 4px rgb(0 0 0 / 0.45);
+}
+
+.trip-card-facts {
+	color: var(--gold-ink);
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.24em;
+	text-transform: uppercase;
 }
 
 .trip-card .todo {

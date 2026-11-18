@@ -5,7 +5,7 @@ import { ImageLoader, MathUtils, type Group, type Vector3Tuple } from 'three';
 import { refreshShadows, wake } from './pacing';
 import { createPolaroidFront, loadCaptionFont, POLAROID_SIZE } from './polaroidTexture';
 import { TripCard } from './TripCard';
-import type { DeskTrip } from './types';
+import type { DeskMap, DeskTrip } from './types';
 
 /*
  * What opens when a place on the map is clicked: the trip's photos rise out of the map at its
@@ -64,6 +64,8 @@ export function revealCentre(anchor: Vector3Tuple, layout: RevealLayout): Vector
 
 interface TripRevealProps {
 	trip: DeskTrip;
+	/** The map sheet: the card's locator stamp is cut from it. */
+	map: DeskMap;
 	/** The pin's base, on the map. */
 	anchor: Vector3Tuple;
 	layout: RevealLayout;
@@ -75,7 +77,7 @@ interface TripRevealProps {
 	reducedMotion: boolean;
 }
 
-export function TripReveal({ trip, anchor, layout, open, onClose, onClosed, textureWidth, reducedMotion }: TripRevealProps) {
+export function TripReveal({ trip, map, anchor, layout, open, onClose, onClosed, textureWidth, reducedMotion }: TripRevealProps) {
 	// Captions are handwritten: wait for the font before drawing any print.
 	use(loadCaptionFont(trip.photos.map((p) => p.caption ?? '').join('') || 'A'));
 
@@ -167,7 +169,7 @@ export function TripReveal({ trip, anchor, layout, open, onClose, onClosed, text
 				})}
 				{cardShown && (
 					<Html transform distanceFactor={CARD_DISTANCE_FACTOR} position={[layout.card.x, layout.card.y, 0.002]} zIndexRange={[1, 0]}>
-						<TripCard trip={trip} onClose={onClose} />
+						<TripCard trip={trip} map={map} onClose={onClose} />
 					</Html>
 				)}
 			</group>
