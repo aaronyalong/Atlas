@@ -446,7 +446,8 @@
 
 /* ---------- Pin labels (a deco tag, with .deco-tag) ----------
  * Each place's name, always on show next to its pin (screen-space, so always upright). Placed
- * above the pin, or beside it when two places are close; lit gold while hovered or focused.
+ * above, beside, at a corner or below, whichever keeps it clear of the other names and pins
+ * (labels.ts); lit gold while hovered or focused.
  */
 .pin-label {
 	--cut: 5px;
@@ -476,6 +477,23 @@
 
 .pin-label-below {
 	transform: translate(-50%, 34px);
+}
+
+/* The corners, for crowded spots: overlapping the pin by 12px, so the name still reads as its. */
+.pin-label-above-right {
+	transform: translate(-12px, -100%);
+}
+
+.pin-label-above-left {
+	transform: translate(calc(-100% + 12px), -100%);
+}
+
+.pin-label-below-right {
+	transform: translate(-12px, 34px);
+}
+
+.pin-label-below-left {
+	transform: translate(calc(-100% + 12px), 34px);
 }
 
 @media (max-width: 40rem) {

@@ -1,7 +1,9 @@
 import { Html, useCursor } from '@react-three/drei';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { DoubleSide, MathUtils, type Group, type Mesh, type MeshBasicMaterial } from 'three';
+import type { Framing } from './camera';
+import { LABEL_HEIGHT, placeLabels, type LabelSide } from './labels';
 import { refreshShadows, wake } from './pacing';
 import { seededRandom } from './polaroidTexture';
 import type { DeskMap, DeskTrip } from './types';
@@ -29,6 +31,8 @@ const BRASS = '#c29a4b';
 interface PinsProps {
 	trips: DeskTrip[];
 	map: DeskMap;
+	/** The starting view: the labels are placed so none overlap in it. */
+	framing: Framing;
 	/** The place under the pointer or keyboard focus, or null. */
 	hovered: string | null;
 	/** The opened place, or null. */
@@ -38,21 +42,15 @@ interface PinsProps {
 	reducedMotion: boolean;
 }
 
-export function Pins({ trips, map, hovered, selected, onHover, onSelect, reducedMotion }: PinsProps) {
-	// Labels go above their pin, unless other places are close by (within a fifteenth of the map's
-	// width, about a label's length at the starting view). Then the label moves away
-	// from them: to the left if the neighbours are east, to the right if they're west, below if
-	// they're on both sides (Portland, Southern Utah and Dallas form such a cluster).
+export function Pins({ trips, map, framing, hovered, selected, onHover, onSelect, reducedMotion }: PinsProps) {
+	// Each place's name goes beside its pin, on whichever side keeps it clear of the other names
+	// and pins at the starting view (labels.ts).
+	const size = useThree((state) => state.size);
 	const placed = useMemo(() => {
 		const list = trips.filter((t) => t.map).map((trip) => ({ trip, position: mapToDesk(map, trip.map!) }));
-		return list.map((p) => {
-			const near = list.filter((q) => q !== p && Math.hypot(q.position[0] - p.position[0], q.position[2] - p.position[2]) < map.width / 15);
-			const east = near.some((q) => q.position[0] > p.position[0]);
-			const west = near.some((q) => q.position[0] < p.position[0]);
-			const side: LabelSide = east && west ? 'below' : east ? 'left' : west ? 'right' : 'above';
-			return { ...p, side };
-		});
-	}, [trips, map]);
+		const sides = placeLabels(list.map(({ trip, position }) => ({ position, title: trip.title })), framing, size);
+		return list.map((p, i) => ({ ...p, side: sides[i] }));
+	}, [trips, map, framing, size]);
 
 	return placed.map(({ trip, position, side }) => (
 		<Pin
@@ -69,8 +67,6 @@ export function Pins({ trips, map, hovered, selected, onHover, onSelect, reduced
 		/>
 	));
 }
-
-type LabelSide = 'above' | 'below' | 'left' | 'right';
 
 interface PinProps {
 	trip: DeskTrip;
@@ -171,7 +167,7 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 
 				{!anySelected && (
 					// Screen-space label (no `transform`): always upright and readable.
-					<Html position={[0, NEEDLE_LENGTH + 0.016, 0]} zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
+					<Html position={[0, LABEL_HEIGHT, 0]} zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
 						<span className={`deco-tag pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}>{trip.title}</span>
 					</Html>
 				)}

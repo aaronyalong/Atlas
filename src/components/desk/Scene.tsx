@@ -138,7 +138,7 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 						else onClose();
 					}}
 				/>
-				<Pins trips={trips} map={map} hovered={hovered} selected={selected} onHover={onHover} onSelect={onSelect} reducedMotion={profile.reducedMotion} />
+				<Pins trips={trips} map={map} framing={framing} hovered={hovered} selected={selected} onHover={onHover} onSelect={onSelect} reducedMotion={profile.reducedMotion} />
 				<Environment
 					files="/env/small_empty_room_1_512.hdr"
 					environmentIntensity={0.14}
