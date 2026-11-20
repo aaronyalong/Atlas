@@ -1,9 +1,9 @@
-import { Html, useCursor } from '@react-three/drei';
+import { Html, useCursor, type CameraControlsImpl } from '@react-three/drei';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
-import { DoubleSide, MathUtils, type Group, type Mesh, type MeshBasicMaterial } from 'three';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { DoubleSide, MathUtils, Vector3, type Group, type Mesh, type MeshBasicMaterial, type PerspectiveCamera } from 'three';
 import type { Framing } from './camera';
-import { LABEL_HEIGHT, placeLabels, type LabelSide } from './labels';
+import { LABEL_HEIGHT, placeLabels, type LabelSide, type LabelView } from './labels';
 import { refreshShadows, wake } from './pacing';
 import { seededRandom } from './random';
 import type { DeskMap, DeskTrip } from './types';
@@ -14,8 +14,8 @@ import { mapToDesk } from './WorldMap';
  *
  * Brass, like the lamp and the window: a polished dome head on a stepped collar (the deco
  * ziggurat in miniature) and a steel needle; a ring of gold light rippling out across the paper
- * beneath it, and the place's name always on show. Each pin leans a few degrees in its own
- * direction, like pins pushed in by hand.
+ * beneath it, and the place's name beside it wherever there's room. Each pin leans a few degrees
+ * in its own direction, like pins pushed in by hand.
  */
 // About one and a half times life size: true to size, on a 3 m map seen from 4 m away, they'd
 // be specks.
@@ -31,7 +31,7 @@ const BRASS = '#c29a4b';
 interface PinsProps {
 	trips: DeskTrip[];
 	map: DeskMap;
-	/** The starting view: the labels are placed so none overlap in it. */
+	/** The starting view: the labels are first placed so none overlap in it. */
 	framing: Framing;
 	/** The place under the pointer or keyboard focus, or null. */
 	hovered: string | null;
@@ -44,13 +44,39 @@ interface PinsProps {
 
 export function Pins({ trips, map, framing, hovered, selected, onHover, onSelect, reducedMotion }: PinsProps) {
 	// Each place's name goes beside its pin, on whichever side keeps it clear of the other names
-	// and pins at the starting view (labels.ts).
+	// and pins, and is left out where there's no room (labels.ts). Placed for the starting view,
+	// then again wherever the camera comes to rest: zooming in on a crowded corner of the map
+	// spreads its pins apart and brings their names back.
 	const size = useThree((state) => state.size);
+	const camera = useThree((state) => state.camera) as PerspectiveCamera;
+	const controls = useThree((state) => state.controls) as CameraControlsImpl | null;
+	const [view, setView] = useState<LabelView>(framing);
+	// A new framing (a phone turned), or a place closed: the camera is at, or heading for, the starting view.
+	useEffect(() => {
+		if (!selected) setView(framing);
+	}, [framing, selected]);
+	const open = useRef(false);
+	open.current = selected !== null;
+	useEffect(() => {
+		if (!controls) return;
+		const onRest = () => {
+			// The names are hidden while a place is open; its close-up isn't a view to place them for.
+			if (open.current) return;
+			setView({ fov: camera.fov, position: camera.position.toArray(), target: controls.getTarget(new Vector3()).toArray() });
+		};
+		// 'rest' ends a glide; a move with no glide (reduced motion) only ever reports 'sleep'.
+		controls.addEventListener('rest', onRest);
+		controls.addEventListener('sleep', onRest);
+		return () => {
+			controls.removeEventListener('rest', onRest);
+			controls.removeEventListener('sleep', onRest);
+		};
+	}, [controls, camera]);
 	const placed = useMemo(() => {
 		const list = trips.filter((t) => t.map).map((trip) => ({ trip, position: mapToDesk(map, trip.map!) }));
-		const sides = placeLabels(list.map(({ trip, position }) => ({ position, title: trip.title })), framing, size);
+		const sides = placeLabels(list.map(({ trip, position }) => ({ position, title: trip.title })), view, size);
 		return list.map((p, i) => ({ ...p, side: sides[i] }));
-	}, [trips, map, framing, size]);
+	}, [trips, map, view, size]);
 
 	return placed.map(({ trip, position, side }) => (
 		<Pin
@@ -71,7 +97,8 @@ export function Pins({ trips, map, framing, hovered, selected, onHover, onSelect
 interface PinProps {
 	trip: DeskTrip;
 	position: [number, number, number];
-	side: LabelSide;
+	/** Which side of the pin its name goes; null when there's no room for it (it shows while hovered). */
+	side: LabelSide | null;
 	hovered: boolean;
 	selected: boolean;
 	anySelected: boolean;
@@ -171,7 +198,7 @@ function Pin({ trip, position, side, hovered, selected, anySelected, onHover, on
 					// list of places already gives each place a button.
 					<Html position={[0, LABEL_HEIGHT, 0]} zIndexRange={[1, 0]} style={{ pointerEvents: 'none' }}>
 						<span
-							className={`deco-tag pin-label pin-label-${side}${lifted ? ' is-active' : ''}`}
+							className={`deco-tag pin-label pin-label-${side ?? 'above'}${lifted ? ' is-active' : ''}${side || lifted ? '' : ' is-hidden'}`}
 							aria-hidden="true"
 							onPointerEnter={() => onHover(trip.slug)}
 							onPointerLeave={() => onHover(null)}

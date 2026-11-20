@@ -1,17 +1,19 @@
 import { PerspectiveCamera, Vector3 } from 'three';
-import type { Framing } from './camera';
 
 /*
  * Which side of its pin each place's name goes, so that no two names overlap and no name covers
  * another pin.
  *
  * The names are screen-space tags (Pins.tsx), so whether two collide depends on where they land
- * on screen. That's worked out for the starting view (where the pins are closest together: zooming
- * in only spreads them apart): each pin is projected through the starting camera, each name's tag
- * is sized from its length, and the sides are tried for each group of nearby pins, keeping the
- * arrangement with the least overlap (and the least off screen) and, among those, the most
- * natural sides (above, then beside, then the upper corners, then below). The West Coast trips (Portland, Northern California,
- * Southern Utah) sit within about 100 px of each other on a laptop screen, so this matters.
+ * on screen. That's worked out for a view (the starting one, then wherever the camera comes to
+ * rest): each pin is projected through that camera, each name's tag is sized from its length, and
+ * the sides are tried for each group of nearby pins, keeping the arrangement with the least
+ * overlap (and the least off screen) and, among those, the most natural sides (above, then
+ * beside, then the upper corners, then below).
+ *
+ * Where there are more names than room (a dozen trips in the western US, on a phone), the ones
+ * that would still overlap are left out, least crowded first, and get no side: their pins stay,
+ * and their names come back as zooming in spreads the pins apart.
  *
  * The boxes match the .pin-label-* rules in desk.css.
  */
@@ -36,6 +38,15 @@ export const LABEL_HEIGHT = 0.044;
 const GAP = 3;
 /** A group bigger than this is placed one pin at a time instead of every combination being tried. */
 const MAX_SEARCH = 7;
+/** A name this much off the screen (as a fraction of its tag) is left out rather than shown cut off. */
+const MOST_OFF_SCREEN = 0.12;
+
+/** The camera a set of names is placed for. */
+export interface LabelView {
+	fov: number;
+	position: [number, number, number];
+	target: [number, number, number];
+}
 
 interface Box {
 	x0: number;
@@ -79,17 +90,18 @@ function overlap(a: Box, b: Box) {
 }
 
 /**
- * The side for each label, in order.
+ * The side for each label, in order, or null for a name there's no room for in this view.
  * @param pins each pin's foot on the desk (world space) and its name
+ * @param view the camera to place them for
  * @param viewport the canvas size (CSS px)
  */
-export function placeLabels(pins: { position: [number, number, number]; title: string }[], framing: Framing, viewport: { width: number; height: number }): LabelSide[] {
+export function placeLabels(pins: { position: [number, number, number]; title: string }[], view: LabelView, viewport: { width: number; height: number }): (LabelSide | null)[] {
 	const { width, height } = viewport;
 	if (pins.length === 0 || width === 0 || height === 0) return pins.map(() => 'above');
 
-	const camera = new PerspectiveCamera(framing.fov, width / height, 0.05, 200);
-	camera.position.set(...framing.position);
-	camera.lookAt(...framing.target);
+	const camera = new PerspectiveCamera(view.fov, width / height, 0.05, 200);
+	camera.position.set(...view.position);
+	camera.lookAt(...view.target);
 	camera.updateMatrixWorld();
 	const toScreen = (x: number, y: number, z: number) => {
 		const v = new Vector3(x, y, z).project(camera);
@@ -174,5 +186,19 @@ export function placeLabels(pins: { position: [number, number, number]; title: s
 		members.forEach((i, k) => (chosen[i] = bestSides[k]));
 	}
 
-	return chosen.map((s) => SIDES[s][0]);
+	// Names that still collide with each other are left out (one over another's pin is put up
+	// with). Taking the least crowded first keeps the most names.
+	const box = (i: number) => boxes[i][chosen[i]];
+	const area = (b: Box) => (b.x1 - b.x0) * (b.y1 - b.y0);
+	// The tag itself, without the space kept clear round it: two may sit closer than they'd like.
+	const tag = (i: number): Box => ({ x0: box(i).x0 + GAP, y0: box(i).y0 + GAP, x1: box(i).x1 - GAP, y1: box(i).y1 - GAP });
+	const crowding = items.map((_, i) => items.reduce((sum, _other, j) => (j === i ? sum : sum + overlap(box(i), box(j))), 0));
+	const order = items.map((_, i) => i).sort((a, b) => crowding[a] - crowding[b] || a - b);
+	const shown: number[] = [];
+	for (const i of order) {
+		const cutOff = offScreen(box(i)) > area(box(i)) * MOST_OFF_SCREEN;
+		if (!cutOff && shown.every((j) => overlap(tag(i), tag(j)) === 0)) shown.push(i);
+	}
+
+	return chosen.map((s, i) => (shown.includes(i) ? SIDES[s][0] : null));
 }

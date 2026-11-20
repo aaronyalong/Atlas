@@ -5,6 +5,23 @@
  *
  * To add one: add its name here, draw it in TripEmblem.tsx, and set `emblem: <name>` on the trip.
  */
-export const EMBLEMS = ['torii', 'tower', 'falls', 'star', 'canyon', 'redwoods'] as const;
+export const EMBLEMS = [
+	'torii',
+	'tower',
+	'falls',
+	'star',
+	'canyon',
+	'redwoods',
+	'church',
+	'palm',
+	'bridge',
+	'sign',
+	'dunes',
+	'needle',
+	'spires',
+	'clock',
+	'arches',
+	'temple',
+] as const;
 
 export type EmblemName = (typeof EMBLEMS)[number];

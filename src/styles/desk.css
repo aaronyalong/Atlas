@@ -573,7 +573,15 @@
 	/* Clickable, like the pin (its <Html> wrapper lets everything else through to the canvas). */
 	pointer-events: auto;
 	cursor: pointer;
-	transition: color 0.2s ease;
+	transition:
+		color 0.2s ease,
+		opacity 0.25s ease;
+}
+
+/* No room for it in this view (labels.ts): its pin stays, and hovering the pin shows it. */
+.pin-label.is-hidden {
+	opacity: 0;
+	pointer-events: none;
 }
 
 .pin-label-above {
