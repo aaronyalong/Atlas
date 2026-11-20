@@ -1,8 +1,8 @@
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
-import { AdditiveBlending, Box3, MathUtils, Plane, Raycaster, Vector2, Vector3, type Intersection, type Mesh, type PerspectiveCamera, type Vector3Tuple } from 'three';
-import { ESTABLISHING_POLAR, establishingShot, FOCUS_POLAR, ORBIT_LIMITS, TARGET_BOUNDS, targetBoundsFor, type Framing } from './camera';
+import { AdditiveBlending, Box3, MathUtils, Plane, Raycaster, Spherical, Vector2, Vector3, type Intersection, type Mesh, type PerspectiveCamera, type Vector3Tuple } from 'three';
+import { ESTABLISHING_POLAR, establishingShot, FOCUS_POLAR, ORBIT_LIMITS, orbitLimitsFor, TARGET_BOUNDS, targetBoundsFor, type Framing } from './camera';
 
 const { ACTION } = CameraControlsImpl;
 
@@ -25,13 +25,14 @@ interface CameraRigProps {
 
 const DESK_PLANE = new Plane(new Vector3(0, 1, 0), 0);
 const BOUNDS = new Box3(new Vector3(...TARGET_BOUNDS.min), new Vector3(...TARGET_BOUNDS.max));
-const SCRATCH = { position: new Vector3(), target: new Vector3(), box: new Box3() };
+const SCRATCH = { position: new Vector3(), target: new Vector3(), box: new Box3(), angles: new Spherical() };
 
 /**
  * The limited orbit: drag to rotate around the desk, scroll or pinch to zoom, right-drag or two
  * fingers to slide across the map, all inside ORBIT_LIMITS and TARGET_BOUNDS. How far it can
- * slide depends on the zoom (targetBoundsFor): zoomed out, the view is held over the map, so the
- * map stays the subject and the room's dark ends stay out of the picture.
+ * slide, swing and tilt depends on the zoom (targetBoundsFor, orbitLimitsFor): zoomed out, the
+ * view is held over the map and nearly square on to it, so the map stays the subject and the
+ * room's dark ends stay out of the picture. Zooming out from a view further round eases it back.
  *
  * Scrolling zooms toward whatever is under the pointer, the way a map app does: the point under
  * the cursor (on the map, the lamp, the gauges...) stays under the cursor while everything else
@@ -59,28 +60,37 @@ export function CameraRig({ controlsRef, framing, reducedMotion, focus, ready }:
 		},
 		[framing, camera],
 	);
-	// The visitor's limits (how low the camera tilts, how far it slides for its zoom) are lifted
+	// The visitor's limits (how far the camera slides, swings and tilts for its zoom) are lifted
 	// while the opening shot plays, which starts lower and further back than they allow.
 	const limited = useRef(false);
-	const held = useRef(new Box3());
+	const held = useRef({ box: new Box3(), distance: -1 });
 	const holdTarget = useCallback(() => {
 		const controls = controlsRef.current;
 		if (!controls || !limited.current) return;
-		// Where the camera is heading (not where it is mid-glide), so the box doesn't chase it.
+		// Where the camera is heading (not where it is mid-glide), so the limits don't chase it.
 		const distance = controls.getPosition(SCRATCH.position, true).distanceTo(controls.getTarget(SCRATCH.target, true));
-		const box = boundsAt(distance, SCRATCH.box);
-		if (box.equals(held.current)) return;
-		held.current.copy(box);
-		controls.setBoundary(box);
-	}, [controlsRef, boundsAt]);
+		if (Math.abs(distance - held.current.distance) < 1e-4) return;
+		held.current.distance = distance;
+		controls.setBoundary(held.current.box.copy(boundsAt(distance, SCRATCH.box)));
+		const { maxAzimuth, maxPolar } = orbitLimitsFor(framing, camera.aspect, distance);
+		controls.minAzimuthAngle = -maxAzimuth;
+		controls.maxAzimuthAngle = maxAzimuth;
+		controls.maxPolarAngle = maxPolar;
+		// Further round or lower than this zoom allows (zooming out from a close view): ease back.
+		const { theta, phi } = controls.getSpherical(SCRATCH.angles, true);
+		if (Math.abs(theta) > maxAzimuth + 1e-4 || phi > maxPolar + 1e-4) void controls.rotateTo(MathUtils.clamp(theta, -maxAzimuth, maxAzimuth), Math.min(phi, maxPolar), true);
+	}, [controlsRef, boundsAt, framing, camera]);
 	const limit = useCallback(
 		(on: boolean) => {
 			const controls = controlsRef.current;
 			if (!controls) return;
 			limited.current = on;
-			controls.maxPolarAngle = on ? ORBIT_LIMITS.maxPolarAngle : ESTABLISHING_POLAR + 0.01;
-			if (on) holdTarget();
-			else controls.setBoundary(held.current.copy(BOUNDS));
+			held.current.distance = -1;
+			if (on) return holdTarget();
+			controls.setBoundary(BOUNDS);
+			controls.minAzimuthAngle = ORBIT_LIMITS.minAzimuthAngle;
+			controls.maxAzimuthAngle = ORBIT_LIMITS.maxAzimuthAngle;
+			controls.maxPolarAngle = ESTABLISHING_POLAR + 0.01;
 		},
 		[controlsRef, holdTarget],
 	);

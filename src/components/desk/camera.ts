@@ -8,14 +8,14 @@
  *   - azimuth angle: 0 = in front of the desk (+z), positive = swung round to the right
  *   - distance:      how far from the target (zooming changes this)
  */
-import { MAP_LIFT } from './roomLayout';
+import { MAP_LIFT, WALL_Z } from './roomLayout';
 
 const deg = (d: number) => (d * Math.PI) / 180;
 
 /**
- * The orbit limits (the rotation part of "limited orbit"). Tight enough that the map stays the
- * subject: looking down at least this steeply, and from no further round than this, the view never
- * reaches the horizon or the room's empty corners, only the desk and the wall behind it.
+ * The orbit limits (the rotation part of "limited orbit"), zoomed right in. Tight enough that the
+ * map stays the subject: looking down at least this steeply, and from no further round than this,
+ * a close view never reaches the horizon. Further out they tighten: see orbitLimitsFor.
  */
 export const ORBIT_LIMITS = {
 	/** Never straight overhead (and, zoomed right out, never up through the ceiling)... */
@@ -81,6 +81,65 @@ export function targetBoundsFor(framing: Framing, aspect: number, distance: numb
 		min: [mix(TARGET_BOUNDS.min[0], far.min[0]), mix(TARGET_BOUNDS.min[1], far.min[1]), mix(TARGET_BOUNDS.min[2], far.min[2])],
 		max: [mix(TARGET_BOUNDS.max[0], far.max[0]), mix(TARGET_BOUNDS.max[1], far.max[1]), mix(TARGET_BOUNDS.max[2], far.max[2])],
 	};
+}
+
+/** Zoomed right out, the camera tilts no lower than this... */
+const FAR_POLAR = deg(50);
+/** ...and swings no further than keeps the view's corner this close to the middle of the back
+ * wall (the window and the clocks, not the bare panels and the room's corners beyond them). */
+const WALL_REACH = 3.2;
+/** However wide the screen, it can still swing this much. */
+const LEAST_SWING = deg(6);
+
+/**
+ * How far round and how low the camera may go at a given zoom. Zoomed right in it has all of
+ * ORBIT_LIMITS (a close view looks down at the map whichever way it's turned). Zoomed out, a low
+ * view from one side looks along the wall into the room's dark end, so the limits tighten with
+ * the zoom: the swing to whatever keeps the view's far corner within WALL_REACH on this screen (a
+ * wide screen sees further sideways, so it swings less), the tilt to FAR_POLAR.
+ */
+export function orbitLimitsFor(framing: Framing, aspect: number, distance: number): { maxAzimuth: number; maxPolar: number } {
+	const out = clamp01((distance - framing.minDistance) / (framing.distance - framing.minDistance));
+	const far = targetBoundsFor(framing, aspect, framing.maxDistance);
+	// The widest swing whose view stays within reach, found by halving (reach grows with the swing).
+	let low = LEAST_SWING;
+	let high = ORBIT_LIMITS.maxAzimuthAngle;
+	if (viewReach(framing, aspect, high, far.max[0]) <= WALL_REACH) low = high;
+	else if (viewReach(framing, aspect, low, far.max[0]) < WALL_REACH) {
+		for (let i = 0; i < 12; i++) {
+			const middle = (low + high) / 2;
+			if (viewReach(framing, aspect, middle, far.max[0]) <= WALL_REACH) low = middle;
+			else high = middle;
+		}
+	}
+	return {
+		maxAzimuth: ORBIT_LIMITS.maxAzimuthAngle + (low - ORBIT_LIMITS.maxAzimuthAngle) * out,
+		maxPolar: ORBIT_LIMITS.maxPolarAngle + (FAR_POLAR - ORBIT_LIMITS.maxPolarAngle) * out,
+	};
+}
+
+/**
+ * Zoomed right out and tilted as low as that allows, with the camera swung `swing` to the left
+ * and the orbit point slid `targetX` to the right: how far right (x) the top-right corner of the
+ * view lands, on the back wall or on the desk in front of it.
+ */
+function viewReach(framing: Framing, aspect: number, swing: number, targetX: number) {
+	const distance = framing.maxDistance;
+	const pitch = Math.PI / 2 - FAR_POLAR;
+	const [, ty, tz] = framing.target;
+	const horizontal = Math.cos(pitch) * distance;
+	const eye = { x: targetX - Math.sin(swing) * horizontal, y: ty + Math.sin(pitch) * distance, z: tz + Math.cos(swing) * horizontal };
+	// The camera's forward, right and up, then the ray through the picture's top-right corner.
+	const forward = { x: Math.sin(swing) * Math.cos(pitch), y: -Math.sin(pitch), z: -Math.cos(swing) * Math.cos(pitch) };
+	const right = { x: Math.cos(swing), z: Math.sin(swing) };
+	const up = { x: Math.sin(swing) * Math.sin(pitch), y: Math.cos(pitch), z: -Math.cos(swing) * Math.sin(pitch) };
+	const v = Math.tan(deg(framing.fov) / 2);
+	const h = v * aspect;
+	const ray = { x: forward.x + h * right.x + v * up.x, y: forward.y + v * up.y, z: forward.z + h * right.z + v * up.z };
+	// Whichever comes first: the desk (if the ray points down) or the wall (if it points back).
+	const toDesk = ray.y < 0 ? eye.y / -ray.y : Infinity;
+	const toWall = ray.z < 0 ? (eye.z - WALL_Z) / -ray.z : Infinity;
+	return eye.x + ray.x * Math.min(toDesk, toWall);
 }
 
 function clamp01(value: number) {
