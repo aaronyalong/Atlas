@@ -19,7 +19,7 @@ import {
 	type Vector3Tuple,
 } from 'three';
 import { wake } from './pacing';
-import { seededRandom } from './polaroid';
+import { seededRandom } from './random';
 
 /*
  * The view through the viewport: the desk is on a station in orbit, and outside is space.

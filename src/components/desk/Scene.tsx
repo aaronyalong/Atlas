@@ -93,19 +93,18 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 		if (selected) setRevealing(selected);
 	}, [selected]);
 	const reveal = pinned.find((p) => p.trip.slug === revealing);
-	const layout = useMemo(() => (reveal ? revealLayout(reveal.trip.photos.length, framing.portrait) : null), [reveal, framing.portrait]);
+	const layout = useMemo(() => revealLayout(framing.portrait), [framing.portrait]);
 
-	// Where the camera goes while a place is open: square on to the reveal, far enough back that
-	// the prints and the card fill most of the screen.
+	// Where the camera goes while a place is open: square on to its boarding pass, far enough back
+	// that the pass and the room left around it (layout.frame) just fit the screen.
 	const focus = useMemo<CameraFocus | null>(() => {
 		const p = pinned.find((item) => item.trip.slug === selected);
 		if (!p) return null;
-		const l = revealLayout(p.trip.photos.length, framing.portrait);
 		const vfov = (framing.fov * Math.PI) / 180;
 		const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / size.height));
-		const distance = Math.max(l.bounds.width / 0.8 / (2 * Math.tan(hfov / 2)), l.bounds.height / 0.62 / (2 * Math.tan(vfov / 2)));
-		return { target: revealCentre(p.position, l), distance };
-	}, [pinned, selected, framing, size]);
+		const distance = Math.max(layout.frame.width / (2 * Math.tan(hfov / 2)), layout.frame.height / (2 * Math.tan(vfov / 2)));
+		return { target: revealCentre(p.position), distance };
+	}, [pinned, selected, framing, size, layout]);
 
 	return (
 		<>
@@ -149,21 +148,18 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 				<Ready onReady={onReady} />
 			</Suspense>
 
-			{/* The opened place's photos and card. Its own Suspense: the photos load on demand. */}
-			{reveal && layout && (
-				<Suspense fallback={null}>
-					<TripReveal
-						key={reveal.trip.slug}
-						trip={reveal.trip}
-						map={map}
-						anchor={reveal.position}
-						layout={layout}
-						open={selected === reveal.trip.slug}
-						onClose={onClose}
-						onClosed={() => setRevealing((r) => (r === reveal.trip.slug ? null : r))}
-						reducedMotion={profile.reducedMotion}
-					/>
-				</Suspense>
+			{/* The opened place's boarding pass. */}
+			{reveal && (
+				<TripReveal
+					key={reveal.trip.slug}
+					trip={reveal.trip}
+					anchor={reveal.position}
+					layout={layout}
+					open={selected === reveal.trip.slug}
+					onClose={onClose}
+					onClosed={() => setRevealing((r) => (r === reveal.trip.slug ? null : r))}
+					reducedMotion={profile.reducedMotion}
+				/>
 			)}
 
 			<CameraRig controlsRef={controlsRef} framing={framing} reducedMotion={profile.reducedMotion} focus={focus} ready={ready} />

@@ -22,7 +22,7 @@ export const ORBIT_LIMITS = {
 } as const;
 
 export interface Framing {
-	/** A tall (portrait) screen: framed differently, and the polaroids use the tall layout. */
+	/** A tall (portrait) screen: framed differently, and a trip's boarding pass stands on end. */
 	portrait: boolean;
 	/** Vertical field of view, in degrees. */
 	fov: number;
@@ -49,7 +49,7 @@ export interface Framing {
  */
 export const TARGET_BOUNDS = { min: [-1.6, -0.01, -0.9] as const, max: [1.6, 0.7, 0.8] as const };
 
-/** An opened place is viewed from the front, looking down at 45° (its photos tip up to match). */
+/** An opened place is viewed from the front, looking down at 45° (its boarding pass tips up to match). */
 export const FOCUS_POLAR = deg(45);
 
 /**

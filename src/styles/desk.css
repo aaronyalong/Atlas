@@ -283,196 +283,280 @@
 	}
 }
 
-/* ---------- Trip card (beside an opened place's photos) ----------
- * Laid out at 440 × 535 px; drei's <Html transform> scales it into the scene. Ivory card stock
- * framed with a double gold rule, like a deco menu card, in both themes, so it sets its own
- * colours.
+/* ---------- Boarding pass (an opened place) ----------
+ * Laid out in px (920 × 400, or 440 × 760 on a phone: BoardingPass.tsx); drei's <Html transform>
+ * scales it into the scene. Ivory card stock in both themes, so it sets its own colours: the
+ * place's emblem on navy, the details in ink, and a tear-off stub with the link to the trip.
  */
-.trip-card {
+.pass-shadow {
+	filter: drop-shadow(0 26px 30px rgb(0 0 0 / 0.55));
+}
+
+.pass {
 	--card-ink: var(--ink);
 	--muted: #6b6259;
+	--art: 280px;
+	--stub: 210px;
+	/* Where the stub tears off, from the left edge: the two notches are punched there. */
+	--tear: calc(100% - var(--stub));
 	position: relative;
 	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 440px;
-	height: 535px;
-	padding: 56px 46px 44px;
+	width: 920px;
+	height: 400px;
+	border-radius: 14px;
+	overflow: hidden;
 	background:
-		radial-gradient(circle at 30% 15%, rgb(255 255 255 / 0.4), transparent 60%),
+		radial-gradient(circle at 40% 10%, rgb(255 255 255 / 0.45), transparent 60%),
 		var(--paper);
-	box-shadow:
-		0 0 0 1px rgb(0 0 0 / 0.08),
-		0 30px 60px -20px rgb(0 0 0 / 0.65);
 	color: var(--card-ink);
 	font-family: var(--font-sans);
-	font-size: 19px;
-	line-height: 1.5;
-	text-align: center;
+	font-size: 17px;
+	line-height: 1.3;
 	color-scheme: light;
 	--color-accent: var(--gold-ink);
-	--color-text-muted: var(--muted);
-}
-
-/* The double rule: an outer line and, inside it, a second with stepped corners. */
-.trip-card::before,
-.trip-card::after {
-	content: '';
-	position: absolute;
-	pointer-events: none;
-}
-
-.trip-card::before {
-	inset: 12px;
-	border: 1.5px solid var(--gold-ink);
-}
-
-.trip-card::after {
-	inset: 18px;
-	border: 1px solid color-mix(in srgb, var(--gold-ink) 60%, transparent);
-	clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+	mask:
+		radial-gradient(circle 12px at var(--tear) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+		radial-gradient(circle 12px at var(--tear) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-	.trip-card {
-		animation: card-in 0.35s var(--ease-out);
+	.pass-shadow {
+		animation: pass-in 0.3s var(--ease-out);
 	}
 }
 
-@keyframes card-in {
+@keyframes pass-in {
 	from {
 		opacity: 0;
 	}
 }
 
-.trip-card-place {
-	display: flex;
-	align-items: center;
-	gap: 12px;
+/* The emblem: a navy panel with a gold rule inset, like a poster stamp. */
+.pass-art {
+	position: relative;
+	flex: none;
+	width: var(--art);
+	background: var(--navy);
+}
+
+.pass-art::after {
+	content: '';
+	position: absolute;
+	inset: 10px;
+	border: 1px solid color-mix(in srgb, var(--gold-bright) 70%, transparent);
+	border-radius: 6px;
+	pointer-events: none;
+}
+
+.pass-emblem {
+	display: block;
 	width: 100%;
+	height: 100%;
+}
+
+/* The emblem's inks (TripEmblem.tsx): sky, far, middle and near, then the lines. */
+.em-sky {
+	fill: var(--navy);
+}
+
+.em-deep {
+	fill: #0b182b;
+}
+
+.em-far {
+	fill: #1a3352;
+	stroke: var(--gold);
+	stroke-width: 1.2;
+	stroke-linejoin: round;
+}
+
+.em-mid {
+	fill: #25476d;
+	stroke: var(--gold);
+	stroke-width: 1.4;
+	stroke-linejoin: round;
+}
+
+.em-near {
+	fill: var(--ivory);
+	stroke: #6d5527;
+	stroke-width: 1;
+	stroke-linejoin: round;
+}
+
+.em-gold {
+	fill: var(--gold);
+	stroke: #6d5527;
+	stroke-width: 1;
+	stroke-linejoin: round;
+}
+
+.em-sun {
+	fill: var(--gold-bright);
+}
+
+.em-rays {
+	fill: var(--gold);
+	opacity: 0.2;
+}
+
+.em-line,
+.em-ring,
+.em-fine,
+.em-mast,
+.em-ink {
+	fill: none;
+	stroke: var(--gold-bright);
+	stroke-linecap: round;
+}
+
+.em-line {
+	stroke-width: 1.6;
+}
+
+.em-ring {
+	stroke-width: 2.4;
+}
+
+.em-fine {
+	stroke-width: 1;
+	opacity: 0.55;
+}
+
+.em-mast {
+	stroke: var(--ivory);
+	stroke-width: 2.2;
+}
+
+.em-ink {
+	stroke: #a88a4a;
+	stroke-width: 1;
+}
+
+/* The details. */
+.pass-main {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	justify-content: space-between;
+	min-width: 0;
+	padding: 30px 34px 30px 36px;
+}
+
+.pass-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	padding-bottom: 10px;
+	border-bottom: 1.5px solid var(--gold-ink);
 	color: var(--gold-ink);
-	font-size: 13px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.3em;
+	text-transform: uppercase;
+}
+
+.pass-brand {
+	color: var(--card-ink);
+	font-family: var(--font-display);
+	font-size: 22px;
+	font-weight: 400;
+	letter-spacing: 0.34em;
+}
+
+.pass-label,
+.pass-fields dt {
+	color: var(--muted);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.28em;
+	text-transform: uppercase;
+}
+
+.pass-title {
+	margin-top: 6px;
+	font-family: var(--font-display);
+	font-size: 46px;
+	font-weight: 400;
+	letter-spacing: 0.07em;
+	line-height: 1.04;
+	text-transform: uppercase;
+	text-wrap: balance;
+}
+
+.pass-place {
+	margin-top: 8px;
+	color: var(--gold-ink);
+	font-size: 14px;
 	font-weight: 700;
 	letter-spacing: 0.32em;
 	text-transform: uppercase;
 }
 
-.trip-card-place::before,
-.trip-card-place::after {
-	content: '';
-	flex: 1;
-	height: 1px;
-	background: currentColor;
-	opacity: 0.6;
-}
-
-.trip-card-title {
-	margin-top: 14px;
-	font-family: var(--font-display);
-	font-size: 50px;
-	font-weight: 400;
-	letter-spacing: 0.08em;
-	line-height: 1.05;
-	text-transform: uppercase;
-}
-
-.trip-card-dates {
-	margin-top: 14px;
-	color: var(--muted);
-	font-size: 14px;
-	font-weight: 600;
-	letter-spacing: 0.2em;
-	text-transform: uppercase;
-}
-
-/* Between the dates and the link: the blurb or the locator stamp, then the facts. */
-.trip-card-middle {
+.pass-fields {
 	display: flex;
-	flex: 1;
+	gap: 30px;
+	padding-top: 14px;
+	border-top: 1px solid color-mix(in srgb, var(--gold-ink) 45%, transparent);
+}
+
+.pass-fields dd {
+	margin-top: 5px;
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* The stub: past the perforation, a barcode for show and the way in. */
+.pass-stub {
+	display: flex;
+	flex: none;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 18px;
-	min-height: 0;
-	margin-block: 18px;
+	gap: 26px;
+	width: var(--stub);
+	padding: 30px 24px;
+	border-left: 2px dashed color-mix(in srgb, var(--gold-ink) 55%, transparent);
 }
 
-.trip-card-blurb {
-	overflow: hidden;
-}
-
-/* The locator: a postage stamp with perforated edges, as on the trip's page. */
-.trip-card-stamp {
-	padding: 9px 9px 10px;
-	background: #fbfaf6;
-	mask:
-		radial-gradient(circle 5px at 50% 0, transparent 98%, #000) 0 0 / 14px 51% repeat-x,
-		radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) 0 100% / 14px 51% repeat-x;
-	filter: drop-shadow(0 5px 8px rgb(0 0 0 / 0.25));
-	transform: rotate(-3deg);
-}
-
-.trip-card-stamp-picture {
-	position: relative;
-	background-color: var(--navy);
-	background-repeat: no-repeat;
-}
-
-/* A brass map pin, as on the desk. */
-.trip-card-stamp-pin {
-	position: absolute;
-	top: calc(50% - 7px);
-	left: calc(50% - 7px);
-	width: 14px;
-	height: 14px;
-	border-radius: 50%;
-	background: radial-gradient(circle at 35% 30%, #fff1c9, #c9a45c 45%, #6f4f1d);
-	box-shadow:
-		0 0 0 2px rgb(251 250 246 / 0.85),
-		0 2px 4px rgb(0 0 0 / 0.45);
-}
-
-.trip-card-facts {
-	color: var(--gold-ink);
-	font-size: 13px;
-	font-weight: 700;
-	letter-spacing: 0.24em;
-	text-transform: uppercase;
-}
-
-.trip-card .todo {
-	border-color: currentColor;
-	color: var(--muted);
-	font-size: 15px;
+.pass-barcode {
+	width: 150px;
+	height: 150px;
+	flex: none;
+	fill: var(--card-ink);
 }
 
 /* The link: a deco tag in ink, filling with ink on hover. */
-.trip-card-open {
+.pass-open {
 	--cut: 8px;
 	--line: var(--card-ink);
 	--fill: var(--paper);
-	padding: 13px 26px 10px;
+	padding: 13px 20px 10px;
 	color: var(--card-ink);
 	font-size: 14px;
 	font-weight: 700;
-	letter-spacing: 0.24em;
+	letter-spacing: 0.22em;
 	text-decoration: none;
 	text-transform: uppercase;
+	white-space: nowrap;
 	transition: color 0.2s ease;
 }
 
-.trip-card-open:hover,
-.trip-card-open:focus-visible {
+.pass-open:hover,
+.pass-open:focus-visible {
 	--fill: var(--card-ink);
 	color: var(--paper);
 	outline: none;
 }
 
-.trip-card-close {
+.pass-close {
 	position: absolute;
 	z-index: 1;
-	top: 24px;
-	right: 24px;
+	top: 12px;
+	right: 12px;
 	width: 40px;
 	height: 40px;
 	border: 0;
@@ -484,93 +568,73 @@
 	cursor: pointer;
 }
 
-.trip-card-close:hover {
+.pass-close:hover {
 	color: var(--card-ink);
 }
 
-.trip-card :focus-visible {
+.pass :focus-visible {
 	outline: 2px solid var(--gold-ink);
 	outline-offset: 3px;
 }
 
-/* ---------- Prints (a trip's photos, beside its card) ----------
- * A Polaroid 600 at 5 px a millimetre: 440 × 535, a 395 px square picture with 22.5 px borders
- * (30 px at the top) and the wide strip below for a caption. drei's <Html transform> scales it
- * into the scene (TripReveal.tsx). A button: a click brings it forward, another puts it back.
- */
-.desk-print {
-	position: relative;
-	display: block;
+/* The phone's pass stands on end: emblem on top, the stub torn off across the bottom. */
+.pass.is-tall {
+	--art: 300px;
+	--stub: 150px;
+	flex-direction: column;
 	width: 440px;
-	height: 535px;
-	padding: 30px 22.5px 0;
-	border: 0;
-	background: linear-gradient(180deg, #fbfaf6, #f1eee6);
-	box-shadow:
-		0 0 0 1px rgb(0 0 0 / 0.06),
-		0 24px 40px -18px rgb(0 0 0 / 0.55);
-	color: var(--ink);
-	font: inherit;
-	cursor: zoom-in;
+	height: 760px;
+	mask:
+		radial-gradient(circle 12px at 0 var(--tear), #0000 97%, #000) left / 51% 100% no-repeat,
+		radial-gradient(circle 12px at 100% var(--tear), #0000 97%, #000) right / 51% 100% no-repeat;
 }
 
-.desk-print.is-zoomed {
-	cursor: zoom-out;
+.is-tall .pass-art {
+	width: auto;
+	height: var(--art);
 }
 
-/* Handled: the corners rubbed a little grey. */
-.desk-print::after {
-	content: '';
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	background:
-		radial-gradient(circle at 0 0, rgb(70 60 50 / 0.14), transparent 34px),
-		radial-gradient(circle at 100% 0, rgb(70 60 50 / 0.09), transparent 30px),
-		radial-gradient(circle at 0 100%, rgb(70 60 50 / 0.1), transparent 38px),
-		radial-gradient(circle at 100% 100%, rgb(70 60 50 / 0.16), transparent 34px);
+.is-tall .pass-main {
+	padding: 24px 30px 22px;
 }
 
-.desk-print img,
-.desk-print-placeholder {
-	display: block;
-	width: 395px;
-	height: 395px;
-	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+.is-tall .pass-fields {
+	gap: 22px;
 }
 
-.desk-print img {
-	object-fit: cover;
-	background: #e8e4da;
+.is-tall .pass-fields dd {
+	font-size: 16px;
 }
 
-.desk-print-placeholder {
-	display: grid;
-	place-items: center;
-	background: linear-gradient(180deg, hsl(212 22% 22%), hsl(218 16% 46%));
+.is-tall .pass-stub {
+	flex-direction: row;
+	justify-content: space-between;
+	gap: 20px;
+	width: auto;
+	height: var(--stub);
+	padding: 24px 30px;
+	border-top: 2px dashed color-mix(in srgb, var(--gold-ink) 55%, transparent);
+	border-left: 0;
 }
 
-.desk-print-placeholder .todo {
-	border-color: rgb(255 255 255 / 0.75);
+.is-tall .pass-barcode {
+	width: 150px;
+	height: 64px;
+}
+
+/* Over the emblem there, so in ivory. */
+.is-tall .pass-close {
+	top: 16px;
+	right: 16px;
+	color: var(--ivory);
+}
+
+.is-tall .pass-close:hover {
 	color: #fff;
-	font-size: 22px;
 }
 
-/* The caption: handwritten in the strip, slightly off level (set per print). */
-.desk-print-caption {
-	display: block;
-	height: 110px;
-	color: var(--ink);
-	font-family: var(--font-hand);
-	font-weight: 600;
-	line-height: 110px;
-	white-space: nowrap;
-	opacity: 0.88;
-}
-
-.desk-print:focus-visible {
-	outline: 3px solid var(--gold-bright);
-	outline-offset: 4px;
+.is-tall .pass-close:focus-visible {
+	outline-color: var(--gold-bright);
 }
 
 /* ---------- Pin labels (a deco tag, with .deco-tag) ----------

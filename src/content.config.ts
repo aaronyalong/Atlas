@@ -1,6 +1,7 @@
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
+import { EMBLEMS } from './lib/emblems';
 
 /**
  * Trips: one Markdown file per trip in src/content/trips/. The file name is the trip's URL slug
@@ -35,10 +36,15 @@ const trips = defineCollection({
 					}
 				}, 'Not a time zone Intl knows (use an IANA name like Asia/Tokyo).')
 				.optional(),
+			/**
+			 * The picture on its boarding pass, on the desk (one of src/lib/emblems.ts). Optional: a
+			 * trip without one gets a compass rose.
+			 */
+			emblem: z.enum(EMBLEMS).optional(),
 			/** YYYY-MM-DD. `end` can be left out for a one-day trip. */
 			start: z.coerce.date().optional(),
 			end: z.coerce.date().optional(),
-			/** One or two sentences: the card on the desk and the trip list. */
+			/** One or two sentences, on the trip list and the trip's page. */
 			blurb: z.string().optional(),
 			/**
 			 * Cover photo, relative to the trip file (e.g. ./tokyo/cover.jpg). Re-encoded at build
@@ -48,8 +54,7 @@ const trips = defineCollection({
 			/** Describes the cover photo for screen readers. Required once there's a cover. */
 			coverAlt: z.string().optional(),
 			/**
-			 * More photos, in order, on the trip's page (the desk previews a trip with its cover
-			 * alone). Paths relative to the trip file, like `cover`; re-encoded the same way, so EXIF
+			 * More photos, in order, on the trip's page. Paths relative to the trip file, like `cover`; re-encoded the same way, so EXIF
 			 * and GPS are stripped.
 			 */
 			photos: z

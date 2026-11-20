@@ -4,6 +4,7 @@ place: Oregon
 lat: 45.5152
 lng: -122.6784
 timeZone: America/Los_Angeles
+emblem: falls
 start: 2025-12-04
 end: 2025-12-10
 cover: ./portland/forest.jpg

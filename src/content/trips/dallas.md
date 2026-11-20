@@ -4,6 +4,7 @@ place: Texas
 lat: 32.7767
 lng: -96.797
 timeZone: America/Chicago
+emblem: star
 start: 2026-11-06
 end: 2026-11-11
 cover: ./dallas/skyline.jpg

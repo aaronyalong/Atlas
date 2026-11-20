@@ -4,6 +4,7 @@ place: California
 lat: 39.3
 lng: -123.5
 timeZone: America/Los_Angeles
+emblem: redwoods
 start: 2026-05-30
 end: 2026-06-02
 cover: ./northern-california/cypress.jpg

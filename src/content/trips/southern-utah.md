@@ -4,6 +4,7 @@ place: Utah
 lat: 37.2982
 lng: -113.0263
 timeZone: America/Denver
+emblem: canyon
 start: 2026-03-30
 end: 2026-04-06
 cover: ./southern-utah/overlook.jpg

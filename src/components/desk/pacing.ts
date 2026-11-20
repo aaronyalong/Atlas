@@ -23,7 +23,7 @@ import { Matrix4, type WebGLRenderer } from 'three';
  * 2. Baked shadows. Three lights cast shadows, and each shadow map is a full extra render of the
  *    scene. Almost nothing that casts a shadow ever moves, so the maps are drawn once, when the
  *    scene has loaded, and again only while something that casts one moves (the pins lifting, a
- *    trip's photos rising), via refreshShadows().
+ *    trip's boarding pass rising), via refreshShadows().
  */
 
 /** Shortest gap between frames while awake: at most 75 a second, so 60 on a 60 or 120 Hz screen. */
