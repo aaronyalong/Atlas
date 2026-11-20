@@ -4,8 +4,8 @@ Aaron Yalong's travel scrapbook, a companion to [aaronyalong.com](https://aarony
 The home page is a 3D desk on an observation deck in orbit (React Three Fiber in an Astro
 island): a large world map across the desk with a pin for every trip and a banker's lamp at
 its corner, under a broad viewport onto Earth, where a shooting star, a meteor and a rocket go by now and then. Click a place on
-the map and two cards rise out of it: a photo of the trip, and a design card with the place's
-emblem and a link to its page. Every trip is also
+the map and that trip's preview rises out of it: a photo of the trip beside a design with the
+place's emblem and a link to its page. Every trip is also
 reachable without the 3D at [`/trips`](src/pages/trips.astro).
 
 ## Commands
@@ -101,8 +101,8 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
    shows EXIF or GPS, but the files themselves are committed to a public repo: strip them first
    (`npm run check:exif` fails on any that still carry metadata).
 3. Optionally, a `blurb` and a journal (the file's Markdown body); without them, they're left out.
-   And an `emblem` (one of `src/lib/emblems.ts`): the picture on the design card that opens
-   beside the photo when its place is clicked on the desk. Without one it gets a compass rose; to draw a new one,
+   And an `emblem` (one of `src/lib/emblems.ts`): the picture beside the photo in the preview
+   that opens when its place is clicked on the desk. Without one it gets a compass rose; to draw a new one,
    see `src/components/desk/TripEmblem.tsx`.
 4. If it's outside the map's crop, the build warns: widen `src/lib/map/config.ts` and run
    `npm run map`. Run `npm run og` to put its pin on the link-preview card.

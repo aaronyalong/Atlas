@@ -37,7 +37,7 @@ const trips = defineCollection({
 				}, 'Not a time zone Intl knows (use an IANA name like Asia/Tokyo).')
 				.optional(),
 			/**
-			 * The picture on its design card, on the desk (one of src/lib/emblems.ts). Optional: a
+			 * The picture in its preview on the desk (one of src/lib/emblems.ts). Optional: a
 			 * trip without one gets a compass rose.
 			 */
 			emblem: z.enum(EMBLEMS).optional(),

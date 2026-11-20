@@ -1,5 +1,5 @@
 /**
- * The emblems a trip can carry on its design card on the desk (the `emblem` field in a trip's
+ * The emblems a trip can carry in its preview on the desk (the `emblem` field in a trip's
  * file). Each is a small deco picture of the place, drawn in src/components/desk/TripEmblem.tsx;
  * a trip without one gets a compass rose.
  *

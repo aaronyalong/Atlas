@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { EmblemName } from '../../lib/emblems';
 
 /*
- * The picture on a trip's design card (TripPoster.tsx): a small deco scene of the place, in the
+ * The picture in a trip's preview (TripPreview.tsx): a small deco scene of the place, in the
  * map's colours (navy sky, gold lines, cream for whatever is nearest).
  *
  * Every scene is drawn on a 300 × 300 square and cropped to fill its panel, whatever its shape:
@@ -87,7 +87,7 @@ const tower = (
 		<rect className="em-near" x="134" y="98" width="32" height="14" rx="3" />
 		<rect className="em-near" x="139" y="89" width="22" height="9" rx="2" />
 		<polygon className="em-near" points="145,89 148,66 152,66 155,89" />
-		<line className="em-mast" x1="150" y1="66" x2="150" y2="42" />
+		<line className="em-mast" x1="150" y1="66" x2="150" y2="46" />
 		<line className="em-mast" x1="145" y1="58" x2="155" y2="58" />
 		{/* The roof: upswept eaves over a beam and its pillars. */}
 		<path className="em-near" d="M70,226 Q150,198 230,226 Q246,220 262,204 Q250,232 238,238 L62,238 Q50,232 38,204 Q54,220 70,226 Z" />

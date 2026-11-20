@@ -13,7 +13,7 @@ export interface DeskTrip {
 	place: string;
 	/** The one photo in its preview: the cover, processed WebP (metadata stripped). Null until added. */
 	photo: { src: string; alt: string } | null;
-	/** The picture on its design card (TripEmblem.tsx); null gets a compass rose. */
+	/** The picture in its preview (TripEmblem.tsx); null gets a compass rose. */
 	emblem: EmblemName | null;
 	/** The trip's page. */
 	href: string;

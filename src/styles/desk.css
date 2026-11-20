@@ -283,109 +283,96 @@
 	}
 }
 
-/* ---------- A place's preview: its photo and its design card ----------
- * Two cards of the same stock and size, 440 × 535 px (a Polaroid 600 at 5 px a millimetre); drei's
- * <Html transform> scales them into the scene (TripReveal.tsx). Ivory in both themes, so they set
- * their own colours.
+/* ---------- A place's preview: its photo and its design ----------
+ * One dark panel in two halves, laid out in px (900 × 500, or 440 × 780 on a phone:
+ * TripPreview.tsx); drei's <Html transform> scales it into the scene. No paper and no borders:
+ * the photo runs edge to edge, the design is navy and gold, and a hairline of gold goes round the
+ * lot. The same in both themes, so it sets its own colours.
  */
-.desk-print,
-.trip-poster {
+.trip-preview {
+	--deep: #0a1525;
+	--hairline: color-mix(in srgb, var(--gold-bright) 55%, transparent);
 	position: relative;
-	width: 440px;
-	height: 535px;
-	margin: 0;
-	padding: 30px 22.5px 22.5px;
-	background: linear-gradient(180deg, #fbfaf6, #f1eee6);
-	box-shadow:
-		0 0 0 1px rgb(0 0 0 / 0.06),
-		0 24px 40px -18px rgb(0 0 0 / 0.55);
-	color: var(--ink);
-	color-scheme: light;
+	display: flex;
+	width: 900px;
+	height: 500px;
+	border-radius: 18px;
+	overflow: hidden;
+	background: var(--deep);
+	box-shadow: 0 30px 60px -18px rgb(0 0 0 / 0.75);
+	color: var(--ivory);
+	font-family: var(--font-sans);
+	color-scheme: dark;
+}
+
+/* The hairline, drawn over the photo and the art so it runs unbroken round the panel. */
+.trip-preview::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border: 1px solid var(--hairline);
+	border-radius: inherit;
+	pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-	.desk-print,
-	.trip-poster {
-		animation: card-in 0.3s var(--ease-out);
+	.trip-preview {
+		animation: preview-in 0.3s var(--ease-out);
 	}
 }
 
-@keyframes card-in {
+@keyframes preview-in {
 	from {
 		opacity: 0;
 	}
 }
 
-/* The photo: a white-bordered print, the wide strip left blank underneath. */
-.desk-print {
-	display: block;
+.trip-preview-photo,
+.trip-preview-design {
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 0;
 }
 
-/* Handled: the corners rubbed a little grey. */
-.desk-print::after {
-	content: '';
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	background:
-		radial-gradient(circle at 0 0, rgb(70 60 50 / 0.14), transparent 34px),
-		radial-gradient(circle at 100% 0, rgb(70 60 50 / 0.09), transparent 30px),
-		radial-gradient(circle at 0 100%, rgb(70 60 50 / 0.1), transparent 38px),
-		radial-gradient(circle at 100% 100%, rgb(70 60 50 / 0.16), transparent 34px);
-}
-
-.desk-print img,
-.desk-print-placeholder {
-	display: block;
-	width: 395px;
-	height: 395px;
-	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
-}
-
-.desk-print img {
-	object-fit: cover;
-	background: #e8e4da;
-}
-
-.desk-print-placeholder {
+/* The photo: cropped to fill its half. Without one, the visible TODO on a dark ground. */
+.trip-preview-photo {
 	display: grid;
 	place-items: center;
-	background: linear-gradient(180deg, hsl(212 22% 22%), hsl(218 16% 46%));
+	background: linear-gradient(160deg, #1b2a40, #0d1726);
 }
 
-.desk-print-placeholder .todo {
-	border-color: rgb(255 255 255 / 0.75);
-	color: #fff;
-	font-size: 22px;
+.trip-preview-photo img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
 }
 
-/* The design card: the emblem where the print has its picture, then the name and the link. */
-.trip-poster {
+.trip-preview-photo .todo {
+	border-color: rgb(255 255 255 / 0.6);
+	color: var(--ivory);
+	font-size: 20px;
+}
+
+/* The design: the emblem, then the name and the link on deep navy. */
+.trip-preview-design {
 	display: flex;
 	flex-direction: column;
-	font-family: var(--font-sans);
-	text-align: center;
-	--color-accent: var(--gold-ink);
+	border-left: 1px solid var(--hairline);
 }
 
-.trip-poster-art {
+/* The emblem fills whatever the name and the link leave (out of flow, so the drawing's own
+ * square shape can't push them out of the panel). */
+.trip-preview-art {
 	position: relative;
-	flex: none;
-	height: 296px;
+	flex: 1;
+	min-height: 0;
 	background: var(--navy);
 }
 
-/* A gold rule inset in the picture, like a poster stamp. */
-.trip-poster-art::after {
-	content: '';
-	position: absolute;
-	inset: 9px;
-	border: 1px solid color-mix(in srgb, var(--gold-bright) 70%, transparent);
-	pointer-events: none;
-}
-
 .trip-emblem {
-	display: block;
+	position: absolute;
+	inset: 0;
 	width: 100%;
 	height: 100%;
 }
@@ -469,56 +456,44 @@
 	stroke-width: 1;
 }
 
-.trip-poster-name {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	justify-content: center;
-	min-height: 0;
+.trip-preview-text {
+	flex: none;
+	padding: 20px 28px 26px;
+	border-top: 1px solid var(--hairline);
+	text-align: center;
 }
 
-.trip-poster-place {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	color: var(--gold-ink);
+.trip-preview-place {
+	color: var(--gold-bright);
 	font-size: 12px;
 	font-weight: 700;
-	letter-spacing: 0.32em;
+	letter-spacing: 0.34em;
 	line-height: 1.2;
 	text-transform: uppercase;
 }
 
-.trip-poster-place::before,
-.trip-poster-place::after {
-	content: '';
-	flex: 1;
-	height: 1px;
-	background: currentColor;
-	opacity: 0.6;
-}
-
-.trip-poster-title {
-	margin-top: 7px;
+.trip-preview-title {
+	margin-top: 6px;
+	color: var(--ivory);
 	font-family: var(--font-display);
 	font-size: 31px;
 	font-weight: 400;
-	letter-spacing: 0.07em;
-	line-height: 1.05;
+	letter-spacing: 0.08em;
+	line-height: 1.08;
 	text-transform: uppercase;
 	text-wrap: balance;
 }
 
-/* The way in: the full width of the card, solid navy with gold type, so it can't be missed. */
-.trip-poster-open {
+/* The way in: the full width of the design, solid gold on navy, so it can't be missed. */
+.trip-preview-open {
 	--cut: 10px;
-	--line: var(--gold);
-	--fill: var(--navy);
+	--line: var(--gold-bright);
+	--fill: var(--gold-bright);
 	display: block;
-	flex: none;
-	padding: 20px 20px 16px;
-	color: var(--gold-bright);
-	font-size: 17px;
+	margin-top: 16px;
+	padding: 18px 20px 14px;
+	color: var(--deep);
+	font-size: 16px;
 	font-weight: 700;
 	letter-spacing: 0.3em;
 	line-height: 1.2;
@@ -527,23 +502,22 @@
 	transition: color 0.2s ease;
 }
 
-.trip-poster-open:hover,
-.trip-poster-open:focus-visible {
-	--fill: var(--gold-bright);
-	--line: var(--navy);
-	color: var(--navy);
+.trip-preview-open:hover,
+.trip-preview-open:focus-visible {
+	--line: var(--ivory);
+	--fill: var(--ivory);
 	outline: none;
 }
 
-/* Over the emblem's corner, on a dark disc so it shows against any picture. */
-.trip-poster-close {
+/* In the panel's corner, on a dark disc so it shows against any picture. */
+.trip-preview-close {
 	position: absolute;
 	z-index: 1;
-	top: 40px;
-	right: 32px;
+	top: 14px;
+	right: 14px;
 	width: 36px;
 	height: 36px;
-	border: 1px solid color-mix(in srgb, var(--gold-bright) 60%, transparent);
+	border: 1px solid var(--hairline);
 	border-radius: 50%;
 	background: rgb(9 18 32 / 0.72);
 	color: var(--ivory);
@@ -553,19 +527,31 @@
 	cursor: pointer;
 }
 
-.trip-poster-close:hover {
+.trip-preview-close:hover {
 	background: var(--gold-bright);
-	color: var(--navy);
+	color: var(--deep);
 }
 
-.trip-poster :focus-visible {
-	outline: 2px solid var(--gold-ink);
+.trip-preview :focus-visible {
+	outline: 2px solid var(--ivory);
 	outline-offset: 3px;
 }
 
-.trip-poster-close:focus-visible {
-	outline-color: var(--gold-bright);
-	outline-offset: 2px;
+/* The phone's panel stands on end: the photo on top, the design below. */
+.trip-preview.is-tall {
+	flex-direction: column;
+	width: 440px;
+	height: 780px;
+}
+
+.is-tall .trip-preview-photo {
+	flex: none;
+	height: 300px;
+}
+
+.is-tall .trip-preview-design {
+	border-top: 1px solid var(--hairline);
+	border-left: 0;
 }
 
 /* ---------- Pin labels (a deco tag, with .deco-tag) ----------
