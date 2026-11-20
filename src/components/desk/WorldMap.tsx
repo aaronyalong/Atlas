@@ -3,13 +3,17 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useLayoutEffect, useMemo } from 'react';
 import { AdditiveBlending, CanvasTexture, MeshStandardMaterial, SRGBColorSpace } from 'three';
 import { PALETTE } from './palette';
+import { PAPER } from './paper';
 import { MAP_LIFT } from './roomLayout';
 import type { DeskMap } from './types';
 import { BRASS, BRONZE, GLOW } from './Viewport';
 
+/** How far the sheet's face stands off the slab under it. */
+const SHEET = 0.0008;
+
 /** Where the chart lies: across the desk on its plinth, MAP_LIFT above the wood, its back edge
  * 35 cm short of the wall (room for the lamp behind its left end). */
-export const MAP_POSITION: [number, number, number] = [0, MAP_LIFT + 0.0008, 0.181];
+export const MAP_POSITION: [number, number, number] = [0, MAP_LIFT + SHEET, 0.181];
 
 interface WorldMapProps {
 	map: DeskMap;
@@ -20,14 +24,13 @@ interface WorldMapProps {
 }
 
 /**
- * The map: a chart table, shown the way a museum shows one. A large printed chart under lacquer,
- * inside a stepped brass frame, on a dark slab that stands off the desk on a narrower plinth with
- * a line of gold light under its edge, so it seems to float (a sheet simply lying on the wood
- * looked like a doormat).
+ * The map: shown the way a museum shows one. A large printed chart on a dark slab that stands off
+ * the desk on a narrower plinth with a line of gold light under its edge, so it seems to float (a
+ * sheet simply lying on the wood looked like a doormat). Nothing stands above the chart: its only
+ * frame is a thin brass trim round its edge, level with it.
  *
- * The print is the texture drawn by scripts/map.mjs. The lacquer is a clear coat over it: a hard,
- * smooth top that catches the lamp and the window (paper's fibre and matte sheen made it look
- * woven).
+ * The print is the texture drawn by scripts/map.mjs; the paper's fibre and matte sheen come from
+ * the Paper001 texture maps.
  *
  * It answers the pointer: moving over it highlights the nearest place, a click opens it (the
  * search for "nearest" happens in Scene, which knows the trips).
@@ -35,6 +38,7 @@ interface WorldMapProps {
 export function WorldMap({ map, onHover, onPick }: WorldMapProps) {
 	const gl = useThree((state) => state.gl);
 	const print = useTexture(map.src);
+	const paper = useTexture(PAPER);
 
 	useLayoutEffect(() => {
 		print.colorSpace = SRGBColorSpace;
@@ -47,7 +51,6 @@ export function WorldMap({ map, onHover, onPick }: WorldMapProps) {
 	return (
 		<>
 			<MapPlinth map={map} />
-			<MapFrame map={map} />
 			<mesh
 				position={MAP_POSITION}
 				rotation={[-Math.PI / 2, 0, 0]}
@@ -64,58 +67,9 @@ export function WorldMap({ map, onHover, onPick }: WorldMapProps) {
 				}}
 			>
 				<planeGeometry args={[map.width, map.depth]} />
-				<meshPhysicalMaterial map={print} roughness={0.7} clearcoat={0.5} clearcoatRoughness={0.34} />
+				<meshStandardMaterial map={print} normalMap={paper.normalMap} normalScale={[0.3, 0.3]} roughnessMap={paper.roughnessMap} roughness={0.9} />
 			</mesh>
 		</>
-	);
-}
-
-/** The frame's section, in metres: a brass rail, a lower bronze step inside it, and corner blocks. */
-const FRAME = {
-	/** The rail: how wide and how high, and how much of its width lies over the chart's margin. */
-	rail: { width: 0.034, height: 0.013, overlap: 0.008 },
-	/** The step between the rail and the chart. */
-	step: { width: 0.012, height: 0.005 },
-	/** The corner blocks: a square plinth and a smaller cap on it. */
-	corner: { size: 0.062, height: 0.017, cap: 0.036, capHeight: 0.006 },
-};
-
-/**
- * The chart's frame: four brass rails with a bronze step inside them, and a stepped block at each
- * corner (which also hides where the rails meet). It stands on the slab and lies over the outer
- * edge of the sheet's dark margin, so the chart seems to sit below it.
- */
-function MapFrame({ map }: { map: DeskMap }) {
-	const { rail, step, corner } = FRAME;
-	const [cx, , cz] = MAP_POSITION;
-	// The rail's centre line, measured out from the middle of the sheet.
-	const x = map.width / 2 - rail.overlap + rail.width / 2;
-	const z = map.depth / 2 - rail.overlap + rail.width / 2;
-	// The step's centre line: just inside the rail.
-	const sx = x - rail.width / 2 - step.width / 2;
-	const sz = z - rail.width / 2 - step.width / 2;
-	return (
-		<group position={[cx, MAP_LIFT, cz]}>
-			{[-1, 1].map((side) => (
-				<group key={side}>
-					{/* Along the back and front, then down the sides. */}
-					<RoundedBox args={[2 * x, rail.height, rail.width]} radius={0.003} smoothness={3} position={[0, rail.height / 2, side * z]} material={BRASS} castShadow receiveShadow />
-					<RoundedBox args={[rail.width, rail.height, 2 * z]} radius={0.003} smoothness={3} position={[side * x, rail.height / 2, 0]} material={BRASS} castShadow receiveShadow />
-					<mesh position={[0, step.height / 2, side * sz]} material={BRONZE} receiveShadow>
-						<boxGeometry args={[2 * sx + step.width, step.height, step.width]} />
-					</mesh>
-					<mesh position={[side * sx, step.height / 2, 0]} material={BRONZE} receiveShadow>
-						<boxGeometry args={[step.width, step.height, 2 * sz + step.width]} />
-					</mesh>
-					{[-1, 1].map((end) => (
-						<group key={end} position={[side * x, 0, end * z]}>
-							<RoundedBox args={[corner.size, corner.height, corner.size]} radius={0.003} smoothness={3} position={[0, corner.height / 2, 0]} material={BRASS} castShadow receiveShadow />
-							<RoundedBox args={[corner.cap, corner.capHeight, corner.cap]} radius={0.002} smoothness={3} position={[0, corner.height + corner.capHeight / 2, 0]} material={BRASS} castShadow />
-						</group>
-					))}
-				</group>
-			))}
-		</group>
 	);
 }
 
@@ -126,8 +80,10 @@ export function mapToDesk(map: DeskMap, [u, v]: [number, number]): [number, numb
 
 /** The plinth's section, in metres, from the top down. Insets are measured in from the sheet's edge (negative: out past it). */
 const PLINTH = {
-	/** The slab the chart lies on: out past the frame, with a brass band round its edge. */
-	slab: { inset: -0.05, thickness: 0.036 },
+	/** The slab the chart lies on: a little wider than the sheet. */
+	slab: { inset: -0.02, thickness: 0.036 },
+	/** The trim: a flat brass strip round the sheet's edge, its top level with the chart. */
+	trim: { width: 0.006 },
 	/** The neck: well in under the slab, dark, so the slab seems to float. */
 	neck: { inset: 0.045 },
 	/** The foot, on the desk: a little wider than the neck. */
@@ -140,12 +96,13 @@ const PLINTH = {
 const NECK = new MeshStandardMaterial({ color: '#120e0b', metalness: 0.4, roughness: 0.6 });
 
 /**
- * What the chart stands on: a bronze slab on a narrower dark plinth, with a strip of gold light
+ * What the chart stands on: a bronze slab (with the chart's flush brass trim) on a narrower dark
+ * plinth, with a strip of gold light
  * under the slab's edge and its glow on the desk below (painted on, like the viewport's: no real
  * light, so it costs nothing).
  */
 function MapPlinth({ map }: { map: DeskMap }) {
-	const { slab, neck, foot, light } = PLINTH;
+	const { slab, trim, neck, foot, light } = PLINTH;
 	const [cx, , cz] = MAP_POSITION;
 	const size = (inset: number): [number, number] => [map.width - 2 * inset, map.depth - 2 * inset];
 	const [slabX, slabZ] = size(slab.inset);
@@ -171,10 +128,17 @@ function MapPlinth({ map }: { map: DeskMap }) {
 	return (
 		<group position={[cx, 0, cz]}>
 			<RoundedBox args={[slabX, slab.thickness, slabZ]} radius={0.004} smoothness={3} position={[0, under + slab.thickness / 2, 0]} material={BRONZE} castShadow receiveShadow />
-			{/* The band: a thin brass plate a hair wider than the slab, so only its edge shows. */}
-			<mesh position={[0, under + slab.thickness / 2, 0]} material={BRASS}>
-				<boxGeometry args={[slabX + 0.003, 0.007, slabZ + 0.003]} />
-			</mesh>
+			{/* The trim: four flat strips just outside the sheet, as thick as the sheet stands off the slab. */}
+			{[-1, 1].map((side) => (
+				<group key={side} position={[0, MAP_LIFT + SHEET / 2, 0]}>
+					<mesh position={[0, 0, side * (map.depth / 2 + trim.width / 2)]} material={BRASS} receiveShadow>
+						<boxGeometry args={[map.width + 2 * trim.width, SHEET, trim.width]} />
+					</mesh>
+					<mesh position={[side * (map.width / 2 + trim.width / 2), 0, 0]} material={BRASS} receiveShadow>
+						<boxGeometry args={[trim.width, SHEET, map.depth]} />
+					</mesh>
+				</group>
+			))}
 			<mesh position={[0, (foot.height + under) / 2, 0]} material={NECK}>
 				<boxGeometry args={[neckX, under - foot.height, neckZ]} />
 			</mesh>
