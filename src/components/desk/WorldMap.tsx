@@ -1,13 +1,15 @@
 import { RoundedBox, useTexture } from '@react-three/drei';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
-import { useLayoutEffect } from 'react';
-import { SRGBColorSpace } from 'three';
+import { useLayoutEffect, useMemo } from 'react';
+import { AdditiveBlending, CanvasTexture, MeshStandardMaterial, SRGBColorSpace } from 'three';
+import { PALETTE } from './palette';
+import { MAP_LIFT } from './roomLayout';
 import type { DeskMap } from './types';
-import { BRASS, BRONZE } from './Viewport';
+import { BRASS, BRONZE, GLOW } from './Viewport';
 
-/** Where the sheet lies: across the desk, a hair above it, its back edge 30 cm short of the wall
- * (room for the lamp behind its left end). */
-export const MAP_POSITION: [number, number, number] = [0, 0.0008, 0.131];
+/** Where the chart lies: across the desk on its plinth, MAP_LIFT above the wood, its back edge
+ * 35 cm short of the wall (room for the lamp behind its left end). */
+export const MAP_POSITION: [number, number, number] = [0, MAP_LIFT + 0.0008, 0.181];
 
 interface WorldMapProps {
 	map: DeskMap;
@@ -18,9 +20,10 @@ interface WorldMapProps {
 }
 
 /**
- * The map: a chart table. A large printed chart set into the middle of the desk under lacquer,
- * inside a stepped brass frame, so it reads as part of the furniture (a sheet simply lying on the
- * wood looked like a doormat).
+ * The map: a chart table, shown the way a museum shows one. A large printed chart under lacquer,
+ * inside a stepped brass frame, on a dark slab that stands off the desk on a narrower plinth with
+ * a line of gold light under its edge, so it seems to float (a sheet simply lying on the wood
+ * looked like a doormat).
  *
  * The print is the texture drawn by scripts/map.mjs. The lacquer is a clear coat over it: a hard,
  * smooth top that catches the lamp and the window (paper's fibre and matte sheen made it look
@@ -43,6 +46,7 @@ export function WorldMap({ map, onHover, onPick }: WorldMapProps) {
 
 	return (
 		<>
+			<MapPlinth map={map} />
 			<MapFrame map={map} />
 			<mesh
 				position={MAP_POSITION}
@@ -78,8 +82,8 @@ const FRAME = {
 
 /**
  * The chart's frame: four brass rails with a bronze step inside them, and a stepped block at each
- * corner (which also hides where the rails meet). It lies over the outer edge of the sheet's dark
- * margin, so the chart seems to sit below it.
+ * corner (which also hides where the rails meet). It stands on the slab and lies over the outer
+ * edge of the sheet's dark margin, so the chart seems to sit below it.
  */
 function MapFrame({ map }: { map: DeskMap }) {
 	const { rail, step, corner } = FRAME;
@@ -91,7 +95,7 @@ function MapFrame({ map }: { map: DeskMap }) {
 	const sx = x - rail.width / 2 - step.width / 2;
 	const sz = z - rail.width / 2 - step.width / 2;
 	return (
-		<group position={[cx, 0, cz]}>
+		<group position={[cx, MAP_LIFT, cz]}>
 			{[-1, 1].map((side) => (
 				<group key={side}>
 					{/* Along the back and front, then down the sides. */}
@@ -118,4 +122,72 @@ function MapFrame({ map }: { map: DeskMap }) {
 /** Desk-space position of a point on the sheet, given as fractions (u, v) from its top-left. */
 export function mapToDesk(map: DeskMap, [u, v]: [number, number]): [number, number, number] {
 	return [MAP_POSITION[0] + (u - 0.5) * map.width, MAP_POSITION[1], MAP_POSITION[2] + (v - 0.5) * map.depth];
+}
+
+/** The plinth's section, in metres, from the top down. Insets are measured in from the sheet's edge (negative: out past it). */
+const PLINTH = {
+	/** The slab the chart lies on: out past the frame, with a brass band round its edge. */
+	slab: { inset: -0.05, thickness: 0.036 },
+	/** The neck: well in under the slab, dark, so the slab seems to float. */
+	neck: { inset: 0.045 },
+	/** The foot, on the desk: a little wider than the neck. */
+	foot: { inset: 0.02, height: 0.02 },
+	/** The strip of light round the top of the neck, and how far its glow reaches across the desk. */
+	light: { height: 0.005, reach: 0.16 },
+};
+
+/** The neck: near-black, so only the light under the slab shows. */
+const NECK = new MeshStandardMaterial({ color: '#120e0b', metalness: 0.4, roughness: 0.6 });
+
+/**
+ * What the chart stands on: a bronze slab on a narrower dark plinth, with a strip of gold light
+ * under the slab's edge and its glow on the desk below (painted on, like the viewport's: no real
+ * light, so it costs nothing).
+ */
+function MapPlinth({ map }: { map: DeskMap }) {
+	const { slab, neck, foot, light } = PLINTH;
+	const [cx, , cz] = MAP_POSITION;
+	const size = (inset: number): [number, number] => [map.width - 2 * inset, map.depth - 2 * inset];
+	const [slabX, slabZ] = size(slab.inset);
+	const [neckX, neckZ] = size(neck.inset);
+	const [footX, footZ] = size(foot.inset);
+	const under = MAP_LIFT - slab.thickness;
+
+	// The glow on the desk: the neck's footprint in gold, blurred out to `reach` on every side.
+	const [glowX, glowZ] = [neckX + 2 * light.reach * 1.5, neckZ + 2 * light.reach * 1.5];
+	const glow = useMemo(() => {
+		const canvas = document.createElement('canvas');
+		canvas.width = 1024;
+		canvas.height = Math.round((1024 * glowZ) / glowX);
+		const ctx = canvas.getContext('2d')!;
+		const px = canvas.width / glowX;
+		ctx.filter = `blur(${(light.reach * px) / 2}px)`;
+		ctx.fillStyle = '#fff';
+		ctx.fillRect(((glowX - neckX) / 2) * px, ((glowZ - neckZ) / 2) * px, neckX * px, neckZ * px);
+		return new CanvasTexture(canvas);
+	}, [glowX, glowZ, neckX, neckZ, light.reach]);
+	useLayoutEffect(() => () => glow.dispose(), [glow]);
+
+	return (
+		<group position={[cx, 0, cz]}>
+			<RoundedBox args={[slabX, slab.thickness, slabZ]} radius={0.004} smoothness={3} position={[0, under + slab.thickness / 2, 0]} material={BRONZE} castShadow receiveShadow />
+			{/* The band: a thin brass plate a hair wider than the slab, so only its edge shows. */}
+			<mesh position={[0, under + slab.thickness / 2, 0]} material={BRASS}>
+				<boxGeometry args={[slabX + 0.003, 0.007, slabZ + 0.003]} />
+			</mesh>
+			<mesh position={[0, (foot.height + under) / 2, 0]} material={NECK}>
+				<boxGeometry args={[neckX, under - foot.height, neckZ]} />
+			</mesh>
+			<mesh position={[0, under - light.height / 2 - 0.001, 0]} material={GLOW}>
+				<boxGeometry args={[neckX + 0.004, light.height, neckZ + 0.004]} />
+			</mesh>
+			<mesh position={[0, foot.height / 2, 0]} material={BRONZE} castShadow receiveShadow>
+				<boxGeometry args={[footX, foot.height, footZ]} />
+			</mesh>
+			<mesh position={[0, 0.0012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+				<planeGeometry args={[glowX, glowZ]} />
+				<meshBasicMaterial map={glow} color={PALETTE.goldWash} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+			</mesh>
+		</group>
+	);
 }

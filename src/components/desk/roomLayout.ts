@@ -8,6 +8,9 @@ import type { Vector3Tuple } from 'three';
  * under the ceiling, and swung round to either side it stays inside the side walls (camera.ts).
  */
 
+/** How high the chart table's top (the map) stands above the desk, on its plinth. */
+export const MAP_LIFT = 0.15;
+
 /** The back wall's face. */
 export const WALL_Z = -0.9;
 export const FLOOR_Y = -0.75;

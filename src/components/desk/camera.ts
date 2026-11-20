@@ -8,6 +8,8 @@
  *   - azimuth angle: 0 = in front of the desk (+z), positive = swung round to the right
  *   - distance:      how far from the target (zooming changes this)
  */
+import { MAP_LIFT } from './roomLayout';
+
 const deg = (d: number) => (d * Math.PI) / 180;
 
 /** The orbit limits (the rotation part of "limited orbit"). */
@@ -58,7 +60,8 @@ export const FOCUS_POLAR = deg(45);
  * The lens is deliberately narrow (35°, like a 60 mm lens on a full-frame camera): a wide lens
  * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
  * game". The camera looks down on the desk steeply, 40° off overhead, so the map reads almost as a
- * plan and the wall is a strip across the top. On a wide screen the 3 m chart table and its
+ * plan and the wall is a strip across the top. The camera orbits a point on the map, which
+ * stands a little above the desk on its plinth. On a wide screen the 3 m chart table and its
  * brass frame run edge to edge (the frame's corners just inside a 16:10 screen) and down to just
  * above the hint at the bottom, with the lamp behind its back-left corner and the foot of the viewport (and Earth) above. That's about as
  * far out as the camera goes; zoom and slide to explore the map. A tall phone screen can't
@@ -72,7 +75,7 @@ export function framingFor(aspect: number): Framing {
 	const polar = deg(40);
 	const distance = portrait ? 3.6 : 3.8;
 	const azimuth = 0;
-	const target: [number, number, number] = portrait ? [0.2, 0, -0.38] : [0, 0, -0.06];
+	const target: [number, number, number] = portrait ? [0.2, MAP_LIFT, -0.26] : [0, MAP_LIFT, 0.01];
 	const [tx, ty, tz] = target;
 	// Spherical → x/y/z: the polar angle tilts down from straight up, the azimuth swings around
 	// the vertical axis from the front (+z).

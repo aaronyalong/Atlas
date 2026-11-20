@@ -2,7 +2,8 @@
 
 Aaron Yalong's travel scrapbook, a companion to [aaronyalong.com](https://aaronyalong.com).
 The home page is a 3D desk on an observation deck in orbit (React Three Fiber in an Astro
-island): a large world map set into the desk in a brass frame, with a pin for every trip and a banker's lamp at
+island): a large world map in a brass frame, raised on a lit plinth like a museum piece, with a pin for
+every trip and a banker's lamp at
 its corner, under a broad viewport onto Earth, where a shooting star, a meteor and a rocket go by now and then. Click a place on
 the map and that trip's preview rises out of it: a photo of the trip beside a design with the
 place's emblem and a link to its page. Every trip is also

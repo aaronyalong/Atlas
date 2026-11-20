@@ -41,7 +41,7 @@ export const BRONZE = new MeshStandardMaterial({ color: PALETTE.bronze, metalnes
 /** The recess's sloping sides: bronze too, a little duller. Double-sided for the sun's shadows. */
 const REVEAL = new MeshStandardMaterial({ color: '#2a2119', metalness: 0.6, roughness: 0.5, side: DoubleSide });
 /** The cove light's strip: far brighter than white, so it blooms gold. */
-const GLOW = new MeshBasicMaterial({ color: new Color(...PALETTE.goldLight), toneMapped: false });
+export const GLOW = new MeshBasicMaterial({ color: new Color(...PALETTE.goldLight), toneMapped: false });
 
 export function Viewport({ shadows }: { shadows: boolean }) {
 	return (
