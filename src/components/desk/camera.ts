@@ -58,9 +58,9 @@ export const FOCUS_POLAR = deg(45);
  * The lens is deliberately narrow (35°, like a 60 mm lens on a full-frame camera): a wide lens
  * balloons whatever is nearest and splays the desk's parallel edges apart, which reads as "video
  * game". The camera looks down on the desk steeply, 40° off overhead, so the map reads almost as a
- * plan and the wall is a strip across the top. On a wide screen the 3 m map runs edge to
- * edge (a little past the sides on a 16:10 screen) and down to just above the bottom, with the
- * lamp behind its back-left corner and the foot of the viewport (and Earth) above. That's about as
+ * plan and the wall is a strip across the top. On a wide screen the 3 m chart table and its
+ * brass frame run edge to edge (the frame's corners just inside a 16:10 screen) and down to just
+ * above the hint at the bottom, with the lamp behind its back-left corner and the foot of the viewport (and Earth) above. That's about as
  * far out as the camera goes; zoom and slide to explore the map. A tall phone screen can't
  * show the map across at a readable size, so it frames the stretch the trips cover (East Asia to
  * the US, near the middle of the Pacific-centred map) and lets the rest run off the sides: drag
@@ -70,9 +70,9 @@ export function framingFor(aspect: number): Framing {
 	const portrait = aspect < 1;
 	const fov = portrait ? 48 : 35;
 	const polar = deg(40);
-	const distance = portrait ? 3.6 : 3.5;
+	const distance = portrait ? 3.6 : 3.8;
 	const azimuth = 0;
-	const target: [number, number, number] = portrait ? [0.2, 0, -0.38] : [0, 0, -0.15];
+	const target: [number, number, number] = portrait ? [0.2, 0, -0.38] : [0, 0, -0.06];
 	const [tx, ty, tz] = target;
 	// Spherical → x/y/z: the polar angle tilts down from straight up, the azimuth swings around
 	// the vertical axis from the front (+z).

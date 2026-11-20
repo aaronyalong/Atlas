@@ -2,7 +2,7 @@
 
 Aaron Yalong's travel scrapbook, a companion to [aaronyalong.com](https://aaronyalong.com).
 The home page is a 3D desk on an observation deck in orbit (React Three Fiber in an Astro
-island): a large world map across the desk with a pin for every trip and a banker's lamp at
+island): a large world map set into the desk in a brass frame, with a pin for every trip and a banker's lamp at
 its corner, under a broad viewport onto Earth, where a shooting star, a meteor and a rocket go by now and then. Click a place on
 the map and that trip's preview rises out of it: a photo of the trip beside a design with the
 place's emblem and a link to its page. Every trip is also
@@ -62,11 +62,10 @@ pages' footer.
 - Map data: Natural Earth (public domain), via the world-atlas package, drawn with d3-geo; noted
   on the map itself.
 
-- `public/textures/`: ambientCG Wood051 and Paper001, re-encoded from the 1K JPG sets to WebP
-  (the wood's colour map graded from walnut to a smoked oak: saturation down to about a fifth, a
+- `public/textures/`: ambientCG Wood051, re-encoded from the 1K JPG set to WebP
+  (the colour map graded from walnut to a smoked oak: saturation down to about a fifth, a
   cool cast, a little more grain contrast)
-  without metadata (wood 1024px, paper 512px). Only colour (wood), normal and
-  roughness maps are kept.
+  without metadata (1024px). Only the colour, normal and roughness maps are kept.
 - `public/space/`: Solar System Scope's Earth day, night and cloud maps (CC BY 4.0, credited on
   the site), from the 8k originals: 4096 and 2048 px (clouds 2048 and 1024 px), WebP, no
   metadata. Desktop loads the larger set, phones the smaller.
