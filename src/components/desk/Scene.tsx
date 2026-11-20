@@ -95,8 +95,8 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 	const reveal = pinned.find((p) => p.trip.slug === revealing);
 	const layout = useMemo(() => revealLayout(framing.portrait), [framing.portrait]);
 
-	// Where the camera goes while a place is open: square on to its boarding pass, far enough back
-	// that the pass and the room left around it (layout.frame) just fit the screen.
+	// Where the camera goes while a place is open: square on to its two cards, far enough back that
+	// the pair and the room left around it (layout.frame) just fit the screen.
 	const focus = useMemo<CameraFocus | null>(() => {
 		const p = pinned.find((item) => item.trip.slug === selected);
 		if (!p) return null;
@@ -148,7 +148,7 @@ export function Scene({ profile, ao, framing, controlsRef, trips, map, selected,
 				<Ready onReady={onReady} />
 			</Suspense>
 
-			{/* The opened place's boarding pass. */}
+			{/* The opened place's preview: its photo and its design card. */}
 			{reveal && (
 				<TripReveal
 					key={reveal.trip.slug}

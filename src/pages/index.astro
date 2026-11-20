@@ -7,6 +7,7 @@
  * (window, WebGL), so Astro doesn't try to render it on the server; until the island boots it
  * shows the `fallback` slot, which is the same loading screen the island then takes over.
  */
+import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import DeskApp from '../components/desk/DeskApp';
 import type { DeskMap, DeskTrip } from '../components/desk/types';
@@ -17,20 +18,26 @@ import { getTrips, tripHref } from '../lib/trips';
 import '../styles/desk.css';
 
 /*
- * Build time: turn the trips into the plain data the 3D island needs. Each trip's lat/lng is
- * projected here, with the same code that drew the map texture (scripts/map.mjs), into a
- * position on the sheet; d3-geo never reaches the browser. The desk shows no photos (a trip's
- * boarding pass links to its page, which has them), so none are prepared here.
+ * Build time: turn the trips into the plain data the 3D island needs.
+ *
+ * The desk shows one photo of each trip, its cover, which goes through Astro's image pipeline
+ * (sharp): resized, re-encoded to WebP, and stripped of EXIF/GPS metadata. The island only ever
+ * sees the processed file's URL, and only loads it when that trip is opened. Each trip's lat/lng
+ * is projected here, with the same code that drew the map texture (scripts/map.mjs), into a
+ * position on the sheet; d3-geo never reaches the browser.
  */
 const sheet = createMapSheet(MAP);
 const deskMap: DeskMap = { src: `/map/${MAP.name}.webp`, width: MAP.sheetWidth, depth: MAP.sheetWidth / sheet.aspect };
 
-const deskTrips: DeskTrip[] = (await getTrips()).map((trip) => {
-	const { title, place, lat, lng, timeZone, emblem } = trip.data;
-	const map = locate(sheet, lat, lng);
-	if (!map) console.warn(`${trip.id} (${lat}, ${lng}) is outside the map's crop; it gets no pin. Widen the crop in src/lib/map/config.ts.`);
-	return { slug: trip.id, title, place, lat, lng, emblem: emblem ?? null, href: tripHref(trip), map, timeZone: timeZone ?? null };
-});
+const deskTrips: DeskTrip[] = await Promise.all(
+	(await getTrips()).map(async (trip) => {
+		const { title, place, lat, lng, timeZone, emblem, cover, coverAlt } = trip.data;
+		const map = locate(sheet, lat, lng);
+		if (!map) console.warn(`${trip.id} (${lat}, ${lng}) is outside the map's crop; it gets no pin. Widen the crop in src/lib/map/config.ts.`);
+		const photo = cover ? { src: (await getImage({ src: cover, width: 900, format: 'webp', quality: 80 })).src, alt: coverAlt ?? '' } : null;
+		return { slug: trip.id, title, place, photo, emblem: emblem ?? null, href: tripHref(trip), map, timeZone: timeZone ?? null };
+	}),
+);
 ---
 
 <BaseLayout bodyClass="desk-page on-dark">

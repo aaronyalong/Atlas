@@ -7,7 +7,7 @@ interface EffectsProps {
 	profile: DeviceProfile;
 	/** Ambient occlusion on (the quality ladder can turn it off: device.ts). */
 	ao: boolean;
-	/** Where an opened trip's boarding pass is held, or null: the point the lens focuses on. */
+	/** Where an opened trip's cards are held, or null: the point the lens focuses on. */
 	focus: Vector3Tuple | null;
 	/** What the lens focuses on when nothing is open: the camera's orbit target. */
 	target: Vector3Tuple;

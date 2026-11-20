@@ -37,7 +37,7 @@ const trips = defineCollection({
 				}, 'Not a time zone Intl knows (use an IANA name like Asia/Tokyo).')
 				.optional(),
 			/**
-			 * The picture on its boarding pass, on the desk (one of src/lib/emblems.ts). Optional: a
+			 * The picture on its design card, on the desk (one of src/lib/emblems.ts). Optional: a
 			 * trip without one gets a compass rose.
 			 */
 			emblem: z.enum(EMBLEMS).optional(),
@@ -47,7 +47,7 @@ const trips = defineCollection({
 			/** One or two sentences, on the trip list and the trip's page. */
 			blurb: z.string().optional(),
 			/**
-			 * Cover photo, relative to the trip file (e.g. ./tokyo/cover.jpg). Re-encoded at build
+			 * Cover photo, also the one photo in its preview on the desk. Relative to the trip file (e.g. ./tokyo/cover.jpg). Re-encoded at build
 			 * time, which strips EXIF and GPS data; the original file is never published.
 			 */
 			cover: image().optional(),

@@ -1,6 +1,6 @@
 /**
- * Seeded random numbers: what gives each hand-placed thing on the desk (a pin's lean, a pass's
- * barcode, the stars) its own small variations, the same on every visit.
+ * Seeded random numbers: what gives each hand-placed thing on the desk (a pin's lean, the
+ * stars, the dust) its own small variations, the same on every visit.
  *
  * A random-number generator seeded from a string (FNV-1a hash into mulberry32).
  */

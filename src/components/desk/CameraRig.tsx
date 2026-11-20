@@ -6,7 +6,7 @@ import { establishingShot, FOCUS_POLAR, ORBIT_LIMITS, TARGET_BOUNDS, type Framin
 
 const { ACTION } = CameraControlsImpl;
 
-/** An opened place: the point to look at (the middle of its boarding pass) and the distance. */
+/** An opened place: the point to look at (the middle of its two cards) and the distance. */
 export interface CameraFocus {
 	target: Vector3Tuple;
 	distance: number;

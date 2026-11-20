@@ -2,12 +2,12 @@ import type { ReactNode } from 'react';
 import type { EmblemName } from '../../lib/emblems';
 
 /*
- * The picture on a trip's boarding pass: a small deco scene of the place, in the map's colours
- * (navy sky, gold lines, cream for whatever is nearest).
+ * The picture on a trip's design card (TripPoster.tsx): a small deco scene of the place, in the
+ * map's colours (navy sky, gold lines, cream for whatever is nearest).
  *
- * Every scene is drawn on a 300 × 300 square and cropped to fill its panel, which is tall on the
- * wide pass and wide on the phone's: the subject stays inside the middle (about x 45-255,
- * y 50-250) and only sky and ground run to the edges. The classes (.em-*) are in desk.css.
+ * Every scene is drawn on a 300 × 300 square and cropped to fill its panel, whatever its shape:
+ * the subject stays inside the middle (about x 45-255, y 50-250) and only sky and ground run to
+ * the edges. The classes (.em-*) are in desk.css.
  */
 
 /** Sunbeams fanning out from a point: `count` thin wedges across the upper half. */
@@ -246,7 +246,7 @@ const SCENES: Record<EmblemName, ReactNode> = { torii, tower, falls, star, canyo
 
 export function TripEmblem({ name }: { name: EmblemName | null }) {
 	return (
-		<svg className="pass-emblem" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+		<svg className="trip-emblem" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
 			<rect className="em-sky" x="-60" y="-60" width="420" height="420" />
 			{name ? SCENES[name] : compass}
 		</svg>

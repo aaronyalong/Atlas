@@ -4,7 +4,8 @@ Aaron Yalong's travel scrapbook, a companion to [aaronyalong.com](https://aarony
 The home page is a 3D desk on an observation deck in orbit (React Three Fiber in an Astro
 island): a large world map across the desk with a pin for every trip and a banker's lamp at
 its corner, under a broad viewport onto Earth, where a shooting star, a meteor and a rocket go by now and then. Click a place on
-the map and that trip's boarding pass rises out of it, with a link to its page. Every trip is also
+the map and two cards rise out of it: a photo of the trip, and a design card with the place's
+emblem and a link to its page. Every trip is also
 reachable without the 3D at [`/trips`](src/pages/trips.astro).
 
 ## Commands
@@ -47,7 +48,7 @@ reachable without the 3D at [`/trips`](src/pages/trips.astro).
   outside the crop gets no pin and a build warning.
 - `src/styles/global.css`: design tokens (the art deco palette: gold, ivory, bronze, navy; Poiret
   One and Josefin Sans) and the shared deco pieces (`.deco-tag`, `.deco-rule`, `.caps`);
-  `desk.css` styles the desk's HUD, pin labels and boarding pass.
+  `desk.css` styles the desk's HUD, pin labels and trip preview.
 
 ## Assets and credits
 
@@ -95,12 +96,13 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
    such as `Asia/Tokyo`) for a world clock on the gauge panel; the first five trips with one
    get a clock.
 2. Put its photos in `src/content/trips/<slug>/` and reference them as `cover` (with
-   `coverAlt`) and `photos` (with `alt`, optional `caption`): they're on the trip's page. They're re-encoded at build time, so the site never
+   `coverAlt`) and `photos` (with `alt`, optional `caption`). The cover is the photo in its preview on the desk;
+   the rest are on the trip's page. They're re-encoded at build time, so the site never
    shows EXIF or GPS, but the files themselves are committed to a public repo: strip them first
    (`npm run check:exif` fails on any that still carry metadata).
 3. Optionally, a `blurb` and a journal (the file's Markdown body); without them, they're left out.
-   And an `emblem` (one of `src/lib/emblems.ts`): the picture on the boarding pass that opens
-   when its place is clicked on the desk. Without one it gets a compass rose; to draw a new one,
+   And an `emblem` (one of `src/lib/emblems.ts`): the picture on the design card that opens
+   beside the photo when its place is clicked on the desk. Without one it gets a compass rose; to draw a new one,
    see `src/components/desk/TripEmblem.tsx`.
 4. If it's outside the map's crop, the build warns: widen `src/lib/map/config.ts` and run
    `npm run map`. Run `npm run og` to put its pin on the link-preview card.
