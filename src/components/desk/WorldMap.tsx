@@ -6,7 +6,7 @@ import { PALETTE } from './palette';
 import { PAPER } from './paper';
 import { MAP_LIFT } from './roomLayout';
 import type { DeskMap } from './types';
-import { BRASS, BRONZE, GLOW } from './Viewport';
+import { BRONZE, GLOW } from './Viewport';
 
 /** How far the sheet's face stands off the slab under it. */
 const SHEET = 0.0008;
@@ -92,6 +92,9 @@ const PLINTH = {
 	light: { height: 0.005, reach: 0.16 },
 };
 
+/** The trim's brass, brushed rather than polished: it lies flat under the lamp, where a polished
+ * strip throws a highlight too bright for the effects to hold (it shows as a black patch). */
+const TRIM = new MeshStandardMaterial({ color: PALETTE.brass, metalness: 1, roughness: 0.5 });
 /** The neck: near-black, so only the light under the slab shows. */
 const NECK = new MeshStandardMaterial({ color: '#120e0b', metalness: 0.4, roughness: 0.6 });
 
@@ -131,10 +134,10 @@ function MapPlinth({ map }: { map: DeskMap }) {
 			{/* The trim: four flat strips just outside the sheet, as thick as the sheet stands off the slab. */}
 			{[-1, 1].map((side) => (
 				<group key={side} position={[0, MAP_LIFT + SHEET / 2, 0]}>
-					<mesh position={[0, 0, side * (map.depth / 2 + trim.width / 2)]} material={BRASS} receiveShadow>
+					<mesh position={[0, 0, side * (map.depth / 2 + trim.width / 2)]} material={TRIM} receiveShadow>
 						<boxGeometry args={[map.width + 2 * trim.width, SHEET, trim.width]} />
 					</mesh>
-					<mesh position={[side * (map.width / 2 + trim.width / 2), 0, 0]} material={BRASS} receiveShadow>
+					<mesh position={[side * (map.width / 2 + trim.width / 2), 0, 0]} material={TRIM} receiveShadow>
 						<boxGeometry args={[trim.width, SHEET, map.depth]} />
 					</mesh>
 				</group>

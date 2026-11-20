@@ -1,26 +1,36 @@
-import { Html, useCursor } from '@react-three/drei';
+import { Html, RoundedBox, useCursor } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import { BackSide, DoubleSide, MathUtils, Object3D, type Group, type MeshStandardMaterial, type PointLight, type SpotLight, type Vector3Tuple } from 'three';
 import { wake } from './pacing';
 import { PALETTE } from './palette';
+import { MAP_LIFT } from './roomLayout';
+import { BRONZE } from './Viewport';
 
 /*
  * A banker's lamp, the library kind: an oval brass base, a brass stem rising behind, and a
  * half-cylinder shade of emerald "cased" glass (green outside, opal white inside) held over the
  * desk. Built from primitive shapes.
  *
- * It stands at the back-left corner of the map, against the wall. Its light is broad and soft (a
+ * It stands at the back-left corner of the map, against the wall, on a small plinth that brings it
+ * up to the map's height. Its light is broad and soft (a
  * wide spotlight with a fully soft edge from a long tube bulb) over the left of the map, and a
  * little spills up the wall panels behind it: the one warm light in a cool room. A click on the
  * lamp switches it off and on, like the pull chain.
  *
  * Positions are in metres; the desk top is y = 0, +z toward the viewer.
  */
-export const LAMP_POSITION: Vector3Tuple = [-1.4, 0, -0.72];
+/**
+ * On a plinth of its own, as high as the map's: the lamp is built to light a surface a third of a
+ * metre under its shade. Standing on the desk beside the raised map its bulb was half that from
+ * the paper, which lit it four times as hard and blew out the brass trim under it.
+ */
+export const LAMP_POSITION: Vector3Tuple = [-1.4, MAP_LIFT, -0.72];
+/** The lamp's plinth: a bronze cap the map's slab's thickness, on a narrower dark neck. */
+const PLINTH = { width: 0.25, depth: 0.18, cap: 0.036, inset: 0.03, z: -0.05 };
 const SHADE = { radius: 0.072, length: 0.27, height: 0.33, tilt: -0.22 };
 /** Where the light is aimed: the left of the map (Africa, Europe). */
-const AIM: Vector3Tuple = [-0.85, 0, -0.1];
+const AIM: Vector3Tuple = [-0.85, MAP_LIFT, -0.1];
 const STEM_Z = -0.095;
 const ARM_Y = SHADE.height + SHADE.radius + 0.006;
 /** Brightness of the wash on the wall. */
@@ -108,6 +118,15 @@ export function BankersLamp({ shadowMapSize, reducedMotion }: BankersLampProps) 
 			    would. Half a metre out from the wall (closer makes a hot spot rather than a glow),
 			    and well clear of the brass (see above). */}
 			<pointLight ref={wash} position={[0.02, 0.7, 0.3]} color={PALETTE.lamp} intensity={WASH} distance={2} decay={2} />
+
+			{/* Its plinth, down to the desk. Not part of the switch: a click here does nothing. */}
+			<group position={[0, 0, PLINTH.z]}>
+				<RoundedBox args={[PLINTH.width, PLINTH.cap, PLINTH.depth]} radius={0.004} smoothness={3} position={[0, -PLINTH.cap / 2, 0]} material={BRONZE} castShadow receiveShadow />
+				<mesh position={[0, -(MAP_LIFT + PLINTH.cap) / 2, 0]} castShadow>
+					<boxGeometry args={[PLINTH.width - 2 * PLINTH.inset, MAP_LIFT - PLINTH.cap, PLINTH.depth - 2 * PLINTH.inset]} />
+					<meshStandardMaterial color="#120e0b" metalness={0.4} roughness={0.6} />
+				</mesh>
+			</group>
 
 			<group
 				onPointerOver={(e: ThreeEvent<PointerEvent>) => {
