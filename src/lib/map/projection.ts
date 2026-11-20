@@ -3,8 +3,8 @@ import type { MapConfig } from './config.ts';
 
 /**
  * The map projection and the sheet it's printed on, shared by the texture script
- * (scripts/map.mjs), the page that places the pins (src/pages/index.astro), the trip pages' map
- * stamp and the link-preview card. They must all agree exactly, or pins drift off their cities.
+ * (scripts/map.mjs), the page that places the pins (src/pages/index.astro) and the link-preview
+ * card. They must all agree exactly, or pins drift off their cities.
  *
  * Natural Earth is a compromise projection: neither shapes nor areas are exact, but nothing is
  * grossly stretched, which is why atlases use it.

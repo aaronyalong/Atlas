@@ -20,5 +20,5 @@ photos:
     alt: Dallas Mavericks players in white walk past an Indiana Pacers player on court, seen from seats close behind the scorer's table.
   - src: ./dallas/airport.jpg
     alt: Two people grinning side by side at an airport gate, one giving a thumbs up.
-    caption: With FaZe Rug at the airport
+    caption: FaZe Rug
 ---

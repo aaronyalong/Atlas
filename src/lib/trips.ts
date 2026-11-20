@@ -33,20 +33,6 @@ const DAY = new Intl.DateTimeFormat('en-US', {
 /** The trip's journal text has been written (the body isn't empty or just an HTML comment). */
 export const hasJournal = (trip: Trip) => (trip.body ?? '').replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
 
-/** "35.68° N, 139.65° E". */
-export function formatCoordinates(lat: number, lng: number): string {
-	const ns = lat >= 0 ? 'N' : 'S';
-	const ew = lng >= 0 ? 'E' : 'W';
-	return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lng).toFixed(2)}° ${ew}`;
-}
-
-/** How many days the trip ran, counting both ends (Mar 3 – 10 is 8), or null without dates. */
-export function tripDays(trip: Trip): number | null {
-	const { start, end } = trip.data;
-	if (!start) return null;
-	return Math.round(((end ?? start).getTime() - start.getTime()) / 86_400_000) + 1;
-}
-
 /** "Mar 3 – 10, 2025", "Mar 3, 2025", or null when the trip has no dates yet. */
 export function formatTripDates(trip: Trip): string | null {
 	const { start, end } = trip.data;

@@ -96,8 +96,9 @@ emits nothing for it. It shows before/after sliders for the realism pass from sc
    such as `Asia/Tokyo`) for a world clock on the gauge panel; the first five trips with one
    get a clock.
 2. Put its photos in `src/content/trips/<slug>/` and reference them as `cover` (with
-   `coverAlt`) and `photos` (with `alt`, optional `caption`). The cover is the photo in its preview on the desk;
-   the rest are on the trip's page. They're re-encoded at build time, so the site never
+   `coverAlt`) and `photos` (with `alt`, and optionally a `caption`: a few words set small on the
+   photo). The cover is the photo in its preview on the desk and the large print on the trip's
+   page; the rest are fitted round it there. They're re-encoded at build time, so the site never
    shows EXIF or GPS, but the files themselves are committed to a public repo: strip them first
    (`npm run check:exif` fails on any that still carry metadata).
 3. Optionally, a `blurb` and a journal (the file's Markdown body); without them, they're left out.

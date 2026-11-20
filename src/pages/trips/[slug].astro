@@ -1,25 +1,23 @@
 ---
 /**
- * One trip's scrapbook page: a sheet of ivory card framed in gold (the desk's art deco), with the
- * cover photo taped on as a polaroid, a postage-stamp locator cut from the desk's map, the blurb,
- * the journal with a deco drop cap, and the rest of the photos as taped polaroids with
- * handwritten captions. Then on to the next trip. Clicking a photo opens it large (a <dialog>),
- * with the arrow keys or buttons stepping through the rest; without JavaScript, each photo links
- * to its large version.
+ * One trip's scrapbook page: a sheet of ivory card with a hairline of gold round it (the desk's
+ * art deco), and the trip's photos laid out on it as one tidy collage of prints: the cover
+ * large, held by gold photo corners, the rest fitted round it, each a touch off square as if
+ * placed by hand. A photo's caption, where it has one, is set small on the photo itself. Then
+ * the journal, and on to the next trip. Clicking a photo opens it large (a <dialog>), with the
+ * arrow keys or buttons stepping through the rest; without JavaScript, each photo links to its
+ * large version.
  *
- * Missing dates or photos show as a visible TODO. The blurb and journal are optional: without
- * them, they're left out.
+ * Missing photos show as a visible TODO. The blurb and journal are optional: without them,
+ * they're left out. The page shows no dates: a trip's `start` only puts the trips in order.
  * Every photo goes through astro:assets, which re-encodes it and strips EXIF/GPS metadata; the
  * original file is never published.
  */
 import type { GetStaticPaths } from 'astro';
 import { getImage, Image } from 'astro:assets';
 import { render } from 'astro:content';
-import '@fontsource/caveat/600.css';
 import PageLayout from '../../layouts/PageLayout.astro';
-import { MAP } from '../../lib/map/config';
-import { createMapSheet, locate } from '../../lib/map/projection';
-import { formatCoordinates, formatTripDates, getTrips, hasJournal, tripHref, tripName, type Trip } from '../../lib/trips';
+import { getTrips, hasJournal, tripHref, tripName, type Trip } from '../../lib/trips';
 
 export const getStaticPaths = (async () => {
 	const trips = await getTrips();
@@ -31,23 +29,9 @@ export const getStaticPaths = (async () => {
 }) satisfies GetStaticPaths;
 
 const { trip, previous, next } = Astro.props as { trip: Trip; previous: Trip; next: Trip };
-const { title, place, blurb, cover, coverAlt, photos, lat, lng } = trip.data;
-const dates = formatTripDates(trip);
+const { title, place, blurb, cover, coverAlt, photos } = trip.data;
 const { Content } = await render(trip);
 const journal = hasJournal(trip);
-
-// The locator stamp: the map texture, zoomed in around the trip's pin.
-const sheet = createMapSheet(MAP);
-const pin = locate(sheet, lat, lng);
-const STAMP = 148; // px, the stamp's picture area
-const ZOOM_WIDTH = 1700; // px, how wide the whole map sheet is drawn behind it
-const stampStyle = pin
-	? [
-			`background-image: url(/map/${MAP.name}.webp)`,
-			`background-size: ${ZOOM_WIDTH}px auto`,
-			`background-position: ${STAMP / 2 - pin[0] * ZOOM_WIDTH}px ${STAMP / 2 - (pin[1] * ZOOM_WIDTH) / sheet.aspect}px`,
-		].join('; ')
-	: undefined;
 
 // Link preview: the cover, cropped to 1200 × 630; without one, the default desk card.
 const preview = cover
@@ -62,8 +46,19 @@ const large = async (src: ImageMetadata) => (await getImage({ src, width: 2000, 
 const coverLarge = cover ? await large(cover) : undefined;
 const photosLarge = await Promise.all(photos.map((p) => large(p.src)));
 
+/*
+ * The collage is a grid three prints across. An upright photo fills one cell (3:4) and a wide
+ * one two (3:2), each cropped to its cell; the viewer shows it whole. How the cover sits:
+ *   mosaic  an upright cover, two cells square, with the first two photos stacked beside it
+ *   banner  a wide cover, right across the top
+ *   pair    an upright cover and the trip's one other photo, side by side
+ *   solo    the cover alone
+ */
+const isWide = (image: ImageMetadata) => image.width > image.height;
+const layout = photos.length === 0 ? 'solo' : cover && isWide(cover) ? 'banner' : photos.length === 1 ? 'pair' : 'mosaic';
+
 // Small deterministic tilts, so the prints look placed by hand rather than on a grid.
-const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
+const tilt = (i: number) => [-0.7, 0.9, -0.5, 0.6, -1, 0.4][i % 6];
 ---
 
 <PageLayout
@@ -76,41 +71,42 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		<header class="head">
 			<p class="caps place"><span>{place}</span></p>
 			<h1>{title}</h1>
-			<p class="caps dates">{dates ?? <span class="todo">TODO: dates</span>}</p>
 			<div class="deco-rule" aria-hidden="true"><span></span></div>
+			{blurb && <p class="blurb">{blurb}</p>}
 		</header>
 
-		<div class="lead">
-			<figure class="print cover" style={`--tilt: ${tilt(0)}deg`}>
-				<span class="tape tape-l" aria-hidden="true"></span>
-				<span class="tape tape-r" aria-hidden="true"></span>
+		<section class={`collage is-${layout}`} aria-label="Photos">
+			<figure class={`print cover${cover && isWide(cover) ? ' is-wide' : ''}`} style={`--tilt: ${tilt(0)}deg`}>
 				{
 					cover ? (
 						<a class="zoom" href={coverLarge} data-caption="">
 							<Image src={cover} alt={coverAlt ?? ''} width={1100} class="photo" />
 						</a>
 					) : (
-						<div class="photo placeholder">
+						<div class="zoom placeholder">
 							<span class="todo">TODO: cover photo</span>
 						</div>
 					)
 				}
 			</figure>
-
-			<aside class="side">
-				{
-					pin && (
-						<figure class="stamp" aria-label={`On the map: ${formatCoordinates(lat, lng)}`}>
-							<div class="stamp-picture" style={stampStyle}>
-								<span class="stamp-pin" aria-hidden="true" />
-							</div>
-							<figcaption>{formatCoordinates(lat, lng)}</figcaption>
-						</figure>
-					)
-				}
-				{blurb && <p class="blurb">{blurb}</p>}
-			</aside>
-		</div>
+			{
+				photos.map((photo, i) => (
+					<figure class={`print${isWide(photo.src) ? ' is-wide' : ''}`} style={`--tilt: ${tilt(i + 1)}deg`}>
+						<a class="zoom" href={photosLarge[i]} data-caption={photo.caption ?? ''}>
+							<Image src={photo.src} alt={photo.alt} width={isWide(photo.src) ? 1100 : 700} class="photo" />
+						</a>
+						{photo.caption && <figcaption>{photo.caption}</figcaption>}
+					</figure>
+				))
+			}
+		</section>
+		{
+			photos.length === 0 && (
+				<p class="no-photos">
+					<span class="todo">TODO: photos</span>
+				</p>
+			)
+		}
 
 		{
 			journal && (
@@ -121,30 +117,6 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 				</section>
 			)
 		}
-
-		<section class="photos" aria-label="Photos">
-			{
-				photos.length > 0 ? (
-					<ul>
-						{photos.map((photo, i) => (
-							<li>
-								<figure class="print" style={`--tilt: ${tilt(i + 1)}deg`}>
-									<span class="tape tape-c" aria-hidden="true" />
-									<a class="zoom" href={photosLarge[i]} data-caption={photo.caption ?? ''}>
-										<Image src={photo.src} alt={photo.alt} width={700} class="photo" />
-									</a>
-									{photo.caption && <figcaption>{photo.caption}</figcaption>}
-								</figure>
-							</li>
-						))}
-					</ul>
-				) : (
-					<p>
-						<span class="todo">TODO: photos</span>
-					</p>
-				)
-			}
-		</section>
 	</article>
 
 	{
@@ -175,8 +147,8 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 </PageLayout>
 
 <style>
-	/* The page itself: a sheet of ivory card stock, framed with a double gold rule like a deco menu
-	   card. Light inside, on the dark room. */
+	/* The page itself: a sheet of ivory card stock with one hairline of gold round it, its
+	   corners cut like a deco menu card. Light inside, on the dark room. */
 	.sheet {
 		--ink: #2a2622;
 		--muted: #6b6259;
@@ -186,7 +158,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		position: relative;
 		max-width: 60rem;
 		margin-inline: auto;
-		padding: clamp(2.25rem, 6vw, 4.5rem) clamp(1.5rem, 6vw, 4rem);
+		padding: clamp(2.5rem, 6vw, 4.25rem) clamp(1.5rem, 5.5vw, 3.75rem) clamp(2.5rem, 6vw, 4.5rem);
 		background:
 			radial-gradient(circle at 20% 10%, rgb(255 255 255 / 0.5), transparent 55%),
 			radial-gradient(circle at 90% 95%, rgb(120 90 50 / 0.08), transparent 50%),
@@ -196,22 +168,27 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		color-scheme: light;
 	}
 
-	.sheet::before,
-	.sheet::after {
+	/* The hairline, drawn a side at a time so it can follow the cut corners (a border can't). */
+	.sheet::before {
+		--cut: 14px;
+		--line: color-mix(in srgb, var(--gold-ink) 60%, transparent);
+		--side: linear-gradient(var(--line), var(--line));
+		--rise: linear-gradient(135deg, transparent calc(50% - 0.5px), var(--line) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+		--fall: linear-gradient(45deg, transparent calc(50% - 0.5px), var(--line) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px));
 		content: '';
 		position: absolute;
-		pointer-events: none;
-	}
-
-	.sheet::before {
 		inset: 12px;
-		border: 1.5px solid var(--gold-ink);
-	}
-
-	.sheet::after {
-		inset: 19px;
-		border: 1px solid color-mix(in srgb, var(--gold-ink) 55%, transparent);
-		clip-path: polygon(18px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 18px), calc(100% - 18px) 100%, 18px 100%, 0 calc(100% - 18px), 0 18px);
+		background:
+			var(--side) center top / calc(100% - 2 * var(--cut)) 1px,
+			var(--side) center bottom / calc(100% - 2 * var(--cut)) 1px,
+			var(--side) left center / 1px calc(100% - 2 * var(--cut)),
+			var(--side) right center / 1px calc(100% - 2 * var(--cut)),
+			var(--rise) left top / var(--cut) var(--cut),
+			var(--rise) right bottom / var(--cut) var(--cut),
+			var(--fall) right top / var(--cut) var(--cut),
+			var(--fall) left bottom / var(--cut) var(--cut);
+		background-repeat: no-repeat;
+		pointer-events: none;
 	}
 
 	.head {
@@ -244,58 +221,145 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		text-transform: uppercase;
 	}
 
-	.dates {
-		margin-top: var(--space-4);
-		color: var(--muted);
-		font-size: 0.8rem;
-	}
-
 	.head .deco-rule {
 		max-width: 16rem;
 		margin: var(--space-6) auto 0;
 		color: var(--gold-ink);
 	}
 
-	/* Cover and side column. */
-	.lead {
+	.blurb {
+		max-width: 38rem;
+		margin: var(--space-6) auto 0;
+		font-size: 1.2rem;
+		line-height: 1.6;
+	}
+
+	/* The collage: every photo of the trip as a print, on one grid. Two across on a phone, the
+	   cover right across the top; three across on a wider screen, laid out by .is-* below. */
+	.collage {
+		--gap: clamp(0.9rem, 2.6vw, 1.6rem);
 		display: grid;
-		gap: var(--space-8);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--gap);
 		margin-top: var(--space-12);
 	}
 
-	@media (min-width: 48rem) {
-		.lead {
-			grid-template-columns: 1.6fr 1fr;
-			align-items: start;
-		}
-	}
-
-	.photos li {
-		width: min(17rem, 100%);
-	}
-
-	/* A polaroid: white border, deeper at the bottom, a slight tilt, tape holding it down. */
+	/* A print: a thin, even border of white paper, a soft shadow, and a touch of tilt. */
 	.print {
+		--border: clamp(0.3rem, 0.8vw, 0.45rem);
 		position: relative;
+		display: grid;
 		margin: 0;
-		padding: 0.65rem 0.65rem 1rem;
+		padding: var(--border);
 		background: #fbfaf6;
 		box-shadow:
-			0 1px 1px rgb(0 0 0 / 0.15),
-			0 10px 24px -12px rgb(0 0 0 / 0.5);
+			0 0 0 1px rgb(60 45 20 / 0.06),
+			0 1px 2px rgb(40 30 15 / 0.18),
+			0 14px 26px -16px rgb(40 30 15 / 0.55);
 		transform: rotate(var(--tilt, 0deg));
 	}
 
-	.photo {
+	/* The photo's cell: upright, or wide and two cells across. The photo is cropped to fill it. */
+	.zoom {
+		position: relative;
 		display: block;
+		aspect-ratio: 3 / 4;
+		overflow: hidden;
+	}
+
+	.print.is-wide {
+		grid-column: span 2;
+	}
+
+	.print.is-wide .zoom {
+		aspect-ratio: 3 / 2;
+	}
+
+	.photo {
+		position: absolute;
+		inset: 0;
 		width: 100%;
-		height: auto;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.cover {
+		grid-column: 1 / -1;
+	}
+
+	/* A print left on its own in the last row of two goes right across. */
+	.print:last-child:nth-child(even) {
+		grid-column: 1 / -1;
+	}
+
+	.is-solo {
+		grid-template-columns: minmax(0, 26rem);
+		justify-content: center;
+	}
+
+	@media (min-width: 40rem) {
+		.collage {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+
+		.print:last-child:nth-child(even) {
+			grid-column: auto;
+		}
+
+		.print.is-wide:last-child:nth-child(even) {
+			grid-column: span 2;
+		}
+
+		/* Mosaic: the cover two cells square, as tall as the two photos stacked beside it. */
+		.is-mosaic .cover {
+			grid-column: span 2;
+			grid-row: span 2;
+		}
+
+		.is-mosaic .cover .zoom {
+			aspect-ratio: auto;
+		}
+
+		/* One print alone in the last row sits in the middle. */
+		.is-mosaic .print:not(.is-wide):last-child:nth-child(3n + 1) {
+			grid-column: 2;
+		}
+
+		.is-pair {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			max-width: 44rem;
+			margin-inline: auto;
+		}
+
+		.is-pair .cover {
+			grid-column: auto;
+		}
+
+		.is-solo {
+			grid-template-columns: minmax(0, 26rem);
+		}
+	}
+
+	/* Photo corners, the kind that hold a print in an album: gold, on the cover. */
+	.cover::after {
+		--corner: clamp(1.1rem, 3vw, 1.7rem);
+		content: '';
+		position: absolute;
+		inset: -3px;
+		background:
+			linear-gradient(135deg, #b08a45 0 49%, transparent 50%) top left,
+			linear-gradient(225deg, #c9a45c 0 49%, transparent 50%) top right,
+			linear-gradient(315deg, #a37d3a 0 49%, transparent 50%) bottom right,
+			linear-gradient(45deg, #b08a45 0 49%, transparent 50%) bottom left;
+		background-repeat: no-repeat;
+		background-size: var(--corner) var(--corner);
+		filter: drop-shadow(0 1px 1px rgb(40 30 15 / 0.35));
+		pointer-events: none;
 	}
 
 	.placeholder {
 		display: grid;
 		place-items: center;
-		aspect-ratio: 4 / 3;
 		background:
 			radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.12), transparent 60%),
 			linear-gradient(180deg, var(--navy), #2a3b55);
@@ -306,101 +370,24 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		color: #fff;
 	}
 
+	.no-photos {
+		margin-top: var(--space-8);
+		text-align: center;
+	}
+
+	/* A caption: a few words set small along the photo's foot, quiet enough to miss, on a faint
+	   shade so they read over whatever is there. */
 	.print figcaption {
-		margin-top: 0.45rem;
-		font-family: var(--font-hand);
-		font-size: 1.5rem;
-		font-weight: 600;
-		line-height: 1.1;
-		text-align: center;
-	}
-
-	/* Washi tape: translucent strips with torn ends. */
-	.tape {
 		position: absolute;
-		z-index: 1;
-		width: 6.5rem;
-		height: 1.6rem;
-		background: rgb(214 196 150 / 0.72);
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
-		mask: linear-gradient(90deg, transparent 0 2px, #000 2px calc(100% - 2px), transparent calc(100% - 2px)),
-			repeating-linear-gradient(0deg, #000 0 3px, transparent 3px 5px);
-		mask-composite: add;
-	}
-
-	.tape-l {
-		top: -0.7rem;
-		left: -1.4rem;
-		transform: rotate(-32deg);
-	}
-
-	.tape-r {
-		top: -0.7rem;
-		right: -1.4rem;
-		transform: rotate(28deg);
-		background: rgb(201 164 92 / 0.55);
-	}
-
-	.tape-c {
-		top: -0.8rem;
-		left: calc(50% - 3.25rem);
-		transform: rotate(-3deg);
-	}
-
-	/* The locator: a postage stamp with perforated edges. */
-	.side {
-		display: grid;
-		gap: var(--space-6);
-		justify-items: start;
-	}
-
-	.stamp {
-		justify-self: center;
-		margin: 0;
-		padding: 10px 10px 8px;
-		background: #fbfaf6;
-		/* Perforations: a row of half-circle bites along every edge. */
-		mask:
-			radial-gradient(circle 5px at 50% 0, transparent 98%, #000) 0 0 / 14px 51% repeat-x,
-			radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) 0 100% / 14px 51% repeat-x;
-		filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.25));
-		transform: rotate(3deg);
-	}
-
-	.stamp-picture {
-		position: relative;
-		width: 148px;
-		height: 148px;
-		background-color: var(--navy);
-		background-repeat: no-repeat;
-	}
-
-	/* A brass map pin, as on the desk. */
-	.stamp-pin {
-		position: absolute;
-		top: calc(50% - 7px);
-		left: calc(50% - 7px);
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: radial-gradient(circle at 35% 30%, #fff1c9, #c9a45c 45%, #6f4f1d);
-		box-shadow:
-			0 0 0 2px rgb(251 250 246 / 0.85),
-			0 2px 4px rgb(0 0 0 / 0.45);
-	}
-
-	.stamp figcaption {
-		margin-top: 6px;
-		color: var(--muted);
-		font-size: 0.72rem;
+		inset: auto var(--border) var(--border);
+		padding: 1.6rem 0.8rem 0.6rem;
+		background: linear-gradient(transparent, rgb(0 0 0 / 0.5));
+		color: rgb(255 255 255 / 0.85);
+		font-size: 0.66rem;
 		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-align: center;
-	}
-
-	.blurb {
-		font-size: 1.2rem;
-		line-height: 1.6;
+		letter-spacing: 0.16em;
+		line-height: 1.3;
+		pointer-events: none;
 	}
 
 	/* The journal: between gold rules, opening with a deco drop cap. */
@@ -443,22 +430,6 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		height: auto;
 	}
 
-	/* The rest of the photos. */
-	.photos {
-		margin-top: var(--space-12);
-	}
-
-	/* Prints of a set width, in centred rows: a short last row (one print under two) sits in the
-	   middle of the sheet, not to one side. */
-	.photos ul {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-12) var(--space-8);
-		padding: var(--space-4) 0 0;
-		list-style: none;
-	}
-
 	/* On to the previous and next trips: deco tags on the dark room. */
 	.pager {
 		display: flex;
@@ -489,8 +460,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 	}
 
 	/* The photos open in the viewer. */
-	.zoom {
-		display: block;
+	a.zoom {
 		cursor: zoom-in;
 	}
 
@@ -522,9 +492,7 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 	}
 
 	.viewer figure {
-		display: grid;
-		justify-items: center;
-		gap: var(--space-3);
+		position: relative;
 		margin: 0;
 		padding: 3.5rem 1rem 4.5rem;
 	}
@@ -538,10 +506,17 @@ const tilt = (i: number) => [-2.2, 1.6, -1.1, 2.4, -1.8, 0.9][i % 6];
 		box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.9);
 	}
 
+	/* The caption, in the photo's corner as on its print. */
 	.viewer figcaption {
-		font-family: var(--font-hand);
-		font-size: 1.6rem;
+		position: absolute;
+		bottom: calc(4.5rem + 1rem);
+		left: calc(1rem + 1.25rem);
+		color: rgb(255 255 255 / 0.78);
+		font-size: 0.8rem;
 		font-weight: 600;
+		letter-spacing: 0.16em;
+		text-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
+		pointer-events: none;
 	}
 
 	.viewer figcaption:empty {

@@ -7,8 +7,9 @@ import { EMBLEMS } from './lib/emblems';
  * Trips: one Markdown file per trip in src/content/trips/. The file name is the trip's URL slug
  * (tokyo.md → /trips/tokyo/). The Markdown body is the trip's journal text, optional.
  *
- * Only title, place and coordinates are required. Missing dates or photos show as a visible TODO
- * on the site rather than being made up; a missing blurb or journal is simply left out.
+ * Only title, place and coordinates are required. Missing photos (and, on the trip list, dates)
+ * show as a visible TODO on the site rather than being made up; a missing blurb or journal is
+ * simply left out.
  */
 const trips = defineCollection({
 	loader: glob({ pattern: '**/*.md', base: './src/content/trips' }),
@@ -41,7 +42,10 @@ const trips = defineCollection({
 			 * trip without one gets a compass rose.
 			 */
 			emblem: z.enum(EMBLEMS).optional(),
-			/** YYYY-MM-DD. `end` can be left out for a one-day trip. */
+			/**
+			 * YYYY-MM-DD. `end` can be left out for a one-day trip. They put the trips in order and show
+			 * on the trip list; the trip's own page shows no dates.
+			 */
 			start: z.coerce.date().optional(),
 			end: z.coerce.date().optional(),
 			/** One or two sentences, on the trip list and the trip's page. */
@@ -63,7 +67,7 @@ const trips = defineCollection({
 						src: image(),
 						/** For screen readers: what's in the photo. */
 						alt: z.string(),
-						/** Handwritten under the print. */
+						/** A few words set small in the photo's corner (a name, a place). */
 						caption: z.string().max(40).optional(),
 					}),
 				)
