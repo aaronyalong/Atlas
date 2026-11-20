@@ -12,16 +12,23 @@ import { MAP_LIFT } from './roomLayout';
 
 const deg = (d: number) => (d * Math.PI) / 180;
 
-/** The orbit limits (the rotation part of "limited orbit"). */
+/**
+ * The orbit limits (the rotation part of "limited orbit"). Tight enough that the map stays the
+ * subject: looking down at least this steeply, and from no further round than this, the view never
+ * reaches the horizon or the room's empty corners, only the desk and the wall behind it.
+ */
 export const ORBIT_LIMITS = {
 	/** Never straight overhead (and, zoomed right out, never up through the ceiling)... */
 	minPolarAngle: deg(35),
-	/** ...and never down at desk level. */
-	maxPolarAngle: deg(70),
-	/** 45° either side of the front: a 90° arc in total. */
-	minAzimuthAngle: deg(-45),
-	maxAzimuthAngle: deg(45),
+	/** ...and never low enough to look across the desk into the room. */
+	maxPolarAngle: deg(60),
+	/** 30° either side of the front: a 60° arc in total. */
+	minAzimuthAngle: deg(-30),
+	maxAzimuthAngle: deg(30),
 } as const;
+
+/** The opening shot looks lower than the visitor may afterwards: the limit is lifted while it plays. */
+export const ESTABLISHING_POLAR = deg(69);
 
 export interface Framing {
 	/** A tall (portrait) screen: framed differently, and a trip's preview panel stands on end. */
@@ -45,11 +52,40 @@ export interface Framing {
 
 /**
  * Where the point the camera orbits may be slid to (right-drag or two fingers, and zooming in
- * toward the cursor): over the map, back to the wall (so you can zoom in on the lamp and the
- * gauge panel), never off the desk. Kept narrow enough that, swung right round, the camera stays
- * inside the room.
+ * toward the cursor) when zoomed right in: over the map, back to the wall (so you can zoom in on
+ * the lamp and the gauge panel), never off the desk. Kept narrow enough that, swung right round,
+ * the camera stays inside the room. Further out the box shrinks: see targetBoundsFor.
  */
 export const TARGET_BOUNDS = { min: [-1.6, -0.01, -0.9] as const, max: [1.6, 0.7, 0.8] as const };
+
+/** How far past the middle of the map the edge of the view may reach: its end and a little space. */
+const VIEW_REACH = 1.95;
+/** Zoomed right out, how far the orbit point may still be nudged (so sliding doesn't feel dead). */
+const SLACK = 0.1;
+
+/**
+ * Where the orbit point may be at a given zoom. Zoomed right in it has the run of TARGET_BOUNDS;
+ * the further out, the closer it is held to the starting view's, so that zoomed out the map
+ * always fills the picture and sliding can't bring the room's dark ends into view. (A phone
+ * shows only part of the map's width even zoomed right out, so there it can still slide along.)
+ */
+export function targetBoundsFor(framing: Framing, aspect: number, distance: number): { min: [number, number, number]; max: [number, number, number] } {
+	const out = clamp01((distance - framing.minDistance) / (framing.distance - framing.minDistance));
+	const [hx, hy, hz] = framing.target;
+	// Half the view's width at the orbit point, zoomed right out.
+	const halfView = framing.distance * Math.tan(deg(framing.fov) / 2) * aspect;
+	const farX = Math.min(TARGET_BOUNDS.max[0], Math.max(SLACK, VIEW_REACH - halfView));
+	const far = { min: [Math.min(hx, -farX), hy, hz - SLACK], max: [Math.max(hx, farX), hy, hz + SLACK] };
+	const mix = (near: number, held: number) => near + (held - near) * out;
+	return {
+		min: [mix(TARGET_BOUNDS.min[0], far.min[0]), mix(TARGET_BOUNDS.min[1], far.min[1]), mix(TARGET_BOUNDS.min[2], far.min[2])],
+		max: [mix(TARGET_BOUNDS.max[0], far.max[0]), mix(TARGET_BOUNDS.max[1], far.max[1]), mix(TARGET_BOUNDS.max[2], far.max[2])],
+	};
+}
+
+function clamp01(value: number) {
+	return Math.min(1, Math.max(0, value));
+}
 
 /** An opened place is viewed from the front, looking down at 45° (its preview panel tips up to match). */
 export const FOCUS_POLAR = deg(45);
@@ -103,7 +139,7 @@ export function framingFor(aspect: number): Framing {
  * straight out through the viewport at Earth, from a little to the right.
  */
 export function establishingShot(framing: Framing): { position: [number, number, number]; target: [number, number, number] } {
-	const polar = ORBIT_LIMITS.maxPolarAngle - deg(1);
+	const polar = ESTABLISHING_POLAR;
 	const azimuth = framing.portrait ? deg(10) : deg(8);
 	const distance = framing.portrait ? 2.6 : 2.4;
 	const target: [number, number, number] = [0, 0.3, -0.6];
